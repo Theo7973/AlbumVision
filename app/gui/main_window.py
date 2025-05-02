@@ -80,7 +80,7 @@ class ImageWindow(QMainWindow):
         self.setFixedSize(1200, 800)  # Set the window to a fixed size
 
         # Set the window icon
-        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'logo.svg')
+        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.svg')
         self.setWindowIcon(QIcon(icon_path))
 
         # Main container widget
