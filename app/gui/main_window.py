@@ -5,8 +5,12 @@
 import sys
 import os
 from PySide6.QtWidgets import QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider, QDialog, QPushButton
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal
+
+"""
+
+"""
 
 class ClickableLabel(QLabel):
     clicked = Signal()  # Define a custom signal
@@ -25,6 +29,11 @@ class ImageWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Image Viewer with Scroll Area, Text Views, and Slider")
         self.resize(1200, 800)
+
+        # Set the window icon
+        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'logo.svg')
+        # print(f"Icon path: {icon_path}")  # Debugging line to check the icon path
+        self.setWindowIcon(QIcon(icon_path))
 
         # Main container widget
         main_widget = QWidget(self)
@@ -49,6 +58,17 @@ class ImageWindow(QMainWindow):
         # Add the button layout to the left layout
         left_layout.addLayout(button_layout)
 
+        # Add a horizontal layout for the buttons (above the slider)
+        button_layout = QHBoxLayout()
+        button_layout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
+
+        for i in range(1, 8 + 1):  # Create buttons 1 to 8
+            button = QPushButton(f"Button {i}", self)
+            button_layout.addWidget(button)
+
+        # Add the button layout to the left layout
+        left_layout.addLayout(button_layout)
+
         # Add a slider bar below the buttons
         slider_layout = QHBoxLayout()  # Create a horizontal layout for the slider
         slider_layout.addStretch()  # Add stretch to push the slider to the right
@@ -57,7 +77,7 @@ class ImageWindow(QMainWindow):
         self.img_slider.setMinimum(0)
         self.img_slider.setMaximum(100)
         self.img_slider.setValue(50)  # Default value
-        self.img_slider.setFixedWidth(200)  # Set the slider length to half of the current length
+        self.img_slider.setFixedWidth(100)  # Set the slider length to half of the current length
         self.img_slider.valueChanged.connect(self.update_image_sizes)  # Connect slider to function
 
         slider_layout.addWidget(self.img_slider)  # Add the slider to the layout
@@ -109,6 +129,7 @@ class ImageWindow(QMainWindow):
 
         # Create a vertical layout for the right-side widgets
         right_layout = QVBoxLayout()
+
 
         # Create a vertical layout for the text views
         info_layout = QVBoxLayout()
@@ -171,3 +192,4 @@ class ImageWindow(QMainWindow):
 
         # Show the dialog
         dialog.exec()
+
