@@ -1,6 +1,6 @@
 """
     Main interface GUI for user to interact with Album Vison+.
-    # Need to update the Tool tips, image size control, and image metadata display. #
+    # Need to update the Tool tips and image metadata display. #
 """
 import sys
 import os
@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QRadioButton, QButtonGroup, QGroupBo
 from PySide6.QtWidgets import QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider, QDialog, QPushButton
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal
+from ..utils import file_utils
 
 """
 Custom drag-and-drop area for importing image folders.
@@ -20,19 +21,19 @@ class DragDropArea(QFrame):
             QFrame {
                 border: 2px dashed gray;
                 border-radius: 5px;
-                background-color: #f9f9f9;
+                background-color: none;
                 font: bold 12px;
                 color: #555;
                 text-align: center;
             }
         """)
-        self.setFixedWidth(300)  # Set a fixed width for the drag-and-drop area
+        self.setFixedWidth(291)  # Set a fixed width for the drag-and-drop area
         self.setFixedHeight(100)  # Set a fixed height for the drag-and-drop area
 
         # Add a QLabel to display the text
-        self.label = QLabel("Drop Image Folder", self)
+        self.label = QLabel("Drag and Drop Folder Here", self)
         self.label.setAlignment(Qt.AlignCenter)  # Center the text
-        self.label.setStyleSheet("font-size: 20px; color: #555;border: none;")  # Style the text
+        self.label.setStyleSheet("font-size: 20px; color: #e0e0e0;border: none;")  # Style the text
 
         # Use a layout to center the label inside the frame
         layout = QVBoxLayout(self)
@@ -51,7 +52,9 @@ class DragDropArea(QFrame):
             for url in event.mimeData().urls():
                 folder_path = url.toLocalFile()
                 if os.path.isdir(folder_path):  # Check if the dropped item is a folder
-                    print(f"Dropped folder path: {folder_path}")
+# Need to implement the function to handle the folder import
+                    img_files = file_utils.get_all_files_in_directory(folder_path)  # Call the function to get all files in the directory
+                    print(f"File list in folder: {img_files}")
                     folder_found = True
                     break
             if not folder_found:
@@ -134,8 +137,9 @@ class ImageWindow(QMainWindow):
         # Create a button group to ensure only one button can be selected
         button_group = QButtonGroup(self)
 
-        btn_name_list = ['Animal', 'Cat', 'Dog', 'Person', 'Vehicle', 'Kitchenware', 'Appliance', 'Entertainment\n Device', 'Unknown']
+        btn_name_list = ['Animal', 'Cat', 'Dog', 'Person', 'Vehicle', 'Kitchenware', 'Appliance', 'Entertainment\n Device']
         sorted_list = sorted(btn_name_list)  # Sorts alphabetically
+        sorted_list.append('Unknown')
         for i in range(1, 9 + 1):  # Create buttons for each tag name
             name = sorted_list[i-1]  # Get the name from the sorted list
             button = QRadioButton(f"{name}", self)
@@ -241,7 +245,7 @@ class ImageWindow(QMainWindow):
 
         # Add the drag-and-drop area to the top of the right layout
         drag_drop_area = DragDropArea(self)
-        right_layout.addWidget(drag_drop_area)
+        right_layout.addWidget(drag_drop_area)  # Align to the top
 
         # Create a vertical layout for the text views
         info_layout = QVBoxLayout()
@@ -287,14 +291,14 @@ class ImageWindow(QMainWindow):
 
     def on_image_clicked(self, image_path):
         """Handle the image click event."""
+# need to implement the function to get image metadata from database
         self.img_info.setText(f"Clicked on: {image_path}")  # Update the text view with the image path
 
     def on_image_double_clicked(self, image_path):
         """Handle the image double-click event."""
         dialog = QDialog(self)
         dialog.setWindowTitle("Image Viewer - Double Click")
-        # dialog.resize(800, 600)  # Default size for the pop-up window
-
+    
         # Create a QLabel to display the image
         image_label = QLabel(dialog)
         pixmap = QPixmap(image_path)
