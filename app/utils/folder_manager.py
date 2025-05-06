@@ -36,6 +36,3 @@ def create_output_folders(folder_names, base_directory="output"):
     
     return folder_paths
 
-folder_names = ["processed", "thumbnails", "exports"]
-folder_paths = create_output_folders(folder_names)
-print(folder_paths)
