@@ -1,6 +1,6 @@
 """
     Main interface GUI for user to interact with Album Vison+.
-    # Need to update the Tool tips and image metadata display. #
+    # Need to update the Tool tips, image size control, and image metadata display. #
 """
 import sys
 import os
@@ -8,7 +8,6 @@ from PySide6.QtWidgets import QApplication, QRadioButton, QButtonGroup, QGroupBo
 from PySide6.QtWidgets import QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider, QDialog, QPushButton
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal
-from ..utils import file_utils
 
 """
 Custom drag-and-drop area for importing image folders.
@@ -156,9 +155,9 @@ class ImageWindow(QMainWindow):
         left_layout.addLayout(img_ctrl_layout)
 
         
-        # Create another QGroupBox for the slider
-        slider_group_box = QGroupBox("Image Size Control")
-        slider_group_box.setStyleSheet("""
+        # Create another QGroupBox for the radio buttons
+        size_group_box = QGroupBox("Image Size Control")
+        size_group_box.setStyleSheet("""
             QGroupBox {
                 font: bold 12px;
                 border: 2px solid gray;
@@ -172,24 +171,33 @@ class ImageWindow(QMainWindow):
                 padding: 0 3px;
             }
         """)
-        # Add a horizontal layout for the slider (below the buttons)
-        slider_layout = QHBoxLayout()
 
-        self.img_slider = QSlider(Qt.Horizontal, self)
-        self.img_slider.setMinimum(0)
-        self.img_slider.setMaximum(100)
-        self.img_slider.setValue(50)  # Default value
-        self.img_slider.setFixedWidth(150)  # Set the slider length to half of the current length
-        self.img_slider.valueChanged.connect(self.update_image_sizes)  # Connect slider to function
+        # Add a horizontal layout for the radio buttons
+        size_layout = QHBoxLayout()
 
-        # Add the slider to the layout
-        slider_layout.addWidget(self.img_slider)  
-        
+        # Create radio buttons for Small, Medium, and Large sizes
+        self.small_size_btn = QRadioButton("Small", self)
+        self.medium_size_btn = QRadioButton("Medium", self)
+        self.large_size_btn = QRadioButton("Large", self)
+
+        # Set default selection to Medium
+        self.medium_size_btn.setChecked(True)
+
+        # Connect the radio buttons to the update_image_sizes function
+        self.small_size_btn.toggled.connect(lambda: self.update_image_sizes("Small"))
+        self.medium_size_btn.toggled.connect(lambda: self.update_image_sizes("Medium"))
+        self.large_size_btn.toggled.connect(lambda: self.update_image_sizes("Large"))
+
+        # Add the radio buttons to the layout
+        size_layout.addWidget(self.small_size_btn)
+        size_layout.addWidget(self.medium_size_btn)
+        size_layout.addWidget(self.large_size_btn)
+
         # Set the layout for the group box
-        slider_group_box.setLayout(slider_layout)  
-        
-        # Add the slider group box to the left layout
-        img_ctrl_layout.addWidget(slider_group_box)
+        size_group_box.setLayout(size_layout)
+
+        # Add the size group box to the left layout
+        img_ctrl_layout.addWidget(size_group_box)
         left_layout.addLayout(img_ctrl_layout)
 
 
@@ -209,7 +217,7 @@ class ImageWindow(QMainWindow):
                 crop_center = self.crop_center(pixmap)  # Crop the image to 200x200
                 image_label.setPixmap(crop_center)
                 image_label.setScaledContents(True)
-                image_label.setFixedSize(220, 220)  # Default size
+                image_label.setFixedSize(260, 260)  # Default size
                 self.grid_layout.addWidget(image_label, row, col)
                 self.image_labels.append((image_label, pixmap))  # Store label and pixmap
 
@@ -276,11 +284,27 @@ class ImageWindow(QMainWindow):
         # Set the main layout as the central widget
         self.setCentralWidget(main_widget)
 
-    def update_image_sizes(self):
-        """Update the size of the images based on the slider value."""
-        slider_value = self.img_slider.value()
-        # Map slider value (0-100) to image size (30-500)
-        new_size = 30 + int((slider_value / 100) * (500 - 30))
+    def update_image_sizes(self, size):
+        """Update the size of the images and grid layout based on the selected size."""
+        if size == "Small":
+            new_size = 160  # Small size
+            max_columns = 5  # 5x5 grid
+        elif size == "Medium":
+            new_size = 260  # Medium size (default)
+            max_columns = 3  # 3x3 grid
+        elif size == "Large":
+            new_size = 400  # Large size
+            max_columns = 2  # 2x2 grid
+
+        # Clear the current grid layout
+        for i in reversed(range(self.grid_layout.count())):
+            widget = self.grid_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.setParent(None)
+
+        # Re-add images to the grid layout with the new size and grid configuration
+        row = 0
+        col = 0
         for image_label, pixmap in self.image_labels:
             # Reapply the crop_center function to maintain the square crop
             cropped_pixmap = self.crop_center(pixmap)
@@ -288,6 +312,15 @@ class ImageWindow(QMainWindow):
             scaled_pixmap = cropped_pixmap.scaled(new_size, new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             image_label.setPixmap(scaled_pixmap)
             image_label.setFixedSize(new_size, new_size)
+
+            # Add the image label to the grid layout
+            self.grid_layout.addWidget(image_label, row, col)
+
+            # Update column and row for the next image
+            col += 1
+            if col == max_columns:  # Move to the next row after reaching max columns
+                col = 0
+                row += 1
 
     def on_image_clicked(self, image_path):
         """Handle the image click event."""
