@@ -23,7 +23,7 @@ def main():
     try: 
         from PySide6.QtWidgets import QApplication 
         from app.gui.main_window import ImageWindow 
-        image_directory = r".\tests\cat"  # Replace with your directory path
+        image_directory = r".\data\test_images"  # Replace with your directory path
         app = QApplication(sys.argv) # Create the application instance
         window = ImageWindow(image_directory) # Create the main window instance
         window.setWindowTitle("Album Vision+")   # Set the window title
