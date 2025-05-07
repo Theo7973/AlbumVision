@@ -1,3 +1,7 @@
+"""
+    Main entry point for the AlbumVision application.
+    This script initializes the application, sets up the main window.
+"""
 import sys 
 import os 
 from pathlib import Path 
@@ -18,11 +22,13 @@ def main():
     download_models() 
     try: 
         from PySide6.QtWidgets import QApplication 
-        from app.gui.main_window import MainWindow 
-        app = QApplication(sys.argv) 
-        window = MainWindow() 
+        from app.gui.main_window import ImageWindow 
+        image_directory = r".\tests\cat"  # Replace with your directory path
+        app = QApplication(sys.argv) # Create the application instance
+        window = ImageWindow(image_directory) # Create the main window instance
+        window.setWindowTitle("Album Vision+")   # Set the window title
         window.show() 
-        sys.exit(app.exec()) 
+        sys.exit(app.exec())  # Start the application event loop
     except ImportError: 
         pass 
 if __name__ == "__main__": 
