@@ -1,7 +1,6 @@
 import json
 import os
 from pathlib import Path
-from app.utils.path_settings import PathSettings
 
 class PathSettings:
     def __init__(self, config_file="user_data/settings.json"):

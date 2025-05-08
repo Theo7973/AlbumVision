@@ -1,6 +1,6 @@
 import os
 import json
-from app.utils.folder_manager import create_output_folders
+from pathlib import Path
 
 def create_output_folders(folder_names, base_directory="output"):
     """
@@ -35,4 +35,3 @@ def create_output_folders(folder_names, base_directory="output"):
         json.dump(folder_paths, f, indent=4)
     
     return folder_paths
-
