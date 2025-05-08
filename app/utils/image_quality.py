@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-def check_image_quality(image_path, threshold=100):
+def check_image_quality(image_path, threshold=150):
     """
     Check if an image is blurry or low quality.
     
