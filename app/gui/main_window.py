@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QRadioButton, QButtonGroup, QGroupBo
 from PySide6.QtWidgets import QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider, QDialog, QPushButton
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal
+from ..utils import file_utils  # Import the file_utils module for utility functions
 
 """
 Custom drag-and-drop area for importing image folders.
