@@ -6,7 +6,7 @@ from ultralytics import YOLO
 model = YOLO("yolov8n.pt")
 
 #Set folder path
-input_path = r"C:\Users\austi\OneDrive\Pictures\VISION FOLDERS\dogs"
+input_path = r"C:\Users\austi\OneDrive\Desktop\-BIG BAD FINAL PROJECT\REPO\AlbumVision\data\test_images"
 image_extensions = [".jpg", ".jpeg", ".png", ".webp"]
 
 #Store results

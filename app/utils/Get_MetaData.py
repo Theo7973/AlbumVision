@@ -28,7 +28,7 @@ def get_image_metadata(image_path):
     return metadata
 
 if __name__ == "__main__":
-    test_image = r"C:\Users\austi\OneDrive\Desktop\Jeniffer stuff\Pictures from cruise\b09p 35874.jpg"
+    test_image = r"C:\Users\austi\Downloads\sample_image.jpg"
     
     from pprint import pprint
     metadata = get_image_metadata(test_image)
