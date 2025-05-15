@@ -2,42 +2,42 @@ import cv2
 import numpy as np
 
 def check_image_quality(image_path, threshold=150):
-    """
-    Check if an image is blurry or low quality.
-    
-    Args:
-        image_path: Path to the image file
-        threshold: Laplacian variance threshold (lower means blurrier)
-        
-    Returns:
-        quality: String indicating "low" or "high" quality
-        score: Numerical score of image quality
-    """
+    """Check if an image is blurry or low quality, considering image dimensions."""
     try:
-        # Read the image
         img = cv2.imread(image_path)
         if img is None:
             print(f"Error: Could not read image at {image_path}")
-            return "error", 0
+            return "error", 0, (0, 0)
             
+        # Get image dimensions
+        height, width = img.shape[:2]
+        
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-        # Calculate Laplacian variance (measure of focus/blur)
+        # Calculate Laplacian variance
         laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
         
-        # Check image resolution
-        height, width = img.shape[:2]
-        resolution_score = (height * width) / 1000000  # Normalized by megapixels
+        # Adjust threshold based on image size
+        # Smaller images need lower thresholds
+        size_factor = min(width, height) / 500  # 500 is an empirical base size
+        adjusted_threshold = threshold * max(0.5, size_factor)
         
-        # Combine scores (we can adjust weights as needed later here)
-        combined_score = laplacian_var * 0.7 + resolution_score * 30
+        # Calculate resolution score
+        resolution_score = (height * width) / 1e6  # Normalize to megapixels
         
-        quality = "high" if combined_score > threshold else "low"
+        # Combine scores with size adjustment
+        combined_score = (laplacian_var * 0.7 + resolution_score * 30) * size_factor
         
-        print(f"Image: {image_path}, Quality: {quality}, Score: {combined_score:.2f}")
-        return quality, combined_score
+        quality = "high" if combined_score > adjusted_threshold else "low"
+        
+        print(f"Image: {image_path}")
+        print(f"Dimensions: {width}x{height}")
+        print(f"Quality: {quality}, Score: {combined_score:.2f}")
+        print(f"Adjusted threshold: {adjusted_threshold:.2f}")
+        
+        return quality, combined_score, (width, height)
         
     except Exception as e:
         print(f"Error processing image {image_path}: {e}")
-        return "error", 0
+        return "error", 0, (0, 0)
