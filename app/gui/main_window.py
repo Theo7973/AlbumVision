@@ -4,11 +4,15 @@
 """
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame
+from PySide6.QtWidgets import QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog
 from PySide6.QtWidgets import QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider, QDialog, QPushButton
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal
 from ..utils import file_utils  # Import the file_utils module for utility functions
+
+from .dialogs import export_dialog
+from .dialogs import change_tag_dialog
+from .dialogs import output_dialog
 
 """
 Custom drag-and-drop area for importing image folders.
@@ -96,7 +100,7 @@ class ImageWindow(QMainWindow):
         # Add a horizontal layout for the buttons (top left)
         func_button_layout = QHBoxLayout()
         self.import_bnt = QPushButton("Import", self)
-        self.arrange_bnt = QPushButton("Arrange", self)
+        self.export_bnt = QPushButton("Export", self)
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
@@ -104,7 +108,7 @@ class ImageWindow(QMainWindow):
 
         # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
-        func_button_layout.addWidget(self.arrange_bnt)
+        func_button_layout.addWidget(self.export_bnt)
         func_button_layout.addWidget(self.checkDup_bnt)
         func_button_layout.addWidget(self.changeTag_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
@@ -282,6 +286,12 @@ class ImageWindow(QMainWindow):
         right_widget.setFixedWidth(300)  # Set the width of the right widget
         main_layout.addWidget(right_widget)  # 30% width
 
+        # Connect the "Output Path" button to open the pop-up window
+        self.import_bnt.clicked.connect(self.open_import_dialog)
+        self.export_bnt.clicked.connect(self.open_export_dialog)
+        self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
+        self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
+
         # Set the main layout as the central widget
         self.setCentralWidget(main_widget)
 
@@ -361,3 +371,32 @@ class ImageWindow(QMainWindow):
 
         # Crop the image to a square
         return pixmap.copy(x, y, crop_size, crop_size)
+    
+    def open_import_dialog(self):
+        """Open a file explorer to select a folder and return the folder path."""
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if folder_path:  # If a folder is selected
+            print(f"Selected folder: {folder_path}")  # Print the selected folder path
+            return folder_path
+        else:
+            print("No folder selected.")  # Print a message if no folder is selected
+            return None
+            
+    def open_export_dialog(self):
+        """Open the Import  pop-up dialog."""
+        dialog = export_dialog.ExportDialog(self)
+        if dialog.exec():  # If the user clicks "OK"
+            output_path = dialog.get_output_path()
+
+    def open_change_tag_dialog(self):
+        """Open the Import  pop-up dialog."""
+        dialog = change_tag_dialog.ChangeTagDialog(self)
+        if dialog.exec():  # If the user clicks "OK"
+            output_path = dialog.get_output_path()
+
+    def open_output_path_dialog(self):
+        """Open the Output Path pop-up dialog."""
+        dialog = output_dialog.OutputPathDialog(self)
+        if dialog.exec():  # If the user clicks "OK"
+            output_path = dialog.get_output_path()
+            print(f"Output path set to: {output_path}")  # Handle the output path (e.g., save it)
