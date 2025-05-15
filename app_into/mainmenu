@@ -1,0 +1,30 @@
+import React from 'react';
+import { Home, Camera, Settings, LogOut } from 'lucide-react';
+
+const SideMenu = () => {
+  return (
+    <div className="h-full w-64 bg-gray-800 text-white p-4 flex flex-col gap-4">
+      <div className="text-2xl font-bold mb-6">Album Vision+</div>
+      <button className="flex items-center gap-2 hover:bg-gray-700 p-2 rounded-lg">
+        <Home />
+        <span>Home</span>
+      </button>
+      <button className="flex items-center gap-2 hover:bg-gray-700 p-2 rounded-lg">
+        <Camera />
+        <span>Images</span>
+      </button>
+      <button className="flex items-center gap-2 hover:bg-gray-700 p-2 rounded-lg">
+        <Settings />
+        <span>Settings</span>
+      </button>
+      <div className="mt-auto">
+        <button className="flex items-center gap-2 hover:bg-red-600 p-2 rounded-lg">
+          <LogOut />
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default SideMenu;
