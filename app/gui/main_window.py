@@ -7,8 +7,9 @@ import os
 from PySide6.QtWidgets import QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog
 from PySide6.QtWidgets import QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider, QDialog, QPushButton
 from PySide6.QtGui import QPixmap, QIcon
-from PySide6.QtCore import Qt, Signal
-from ..utils import file_utils  # Import the file_utils module for utility functions
+from PySide6.QtCore import Qt, Signal, QEvent
+from ..utils import filter_non_image_files  # Import the filter_non_image_files function
+from ..utils import get_all_files_in_directory  # Import the get_all_files_in_directory function
 
 from .dialogs import export_dialog
 from .dialogs import change_tag_dialog
@@ -57,7 +58,7 @@ class DragDropArea(QFrame):
                 folder_path = url.toLocalFile()
                 if os.path.isdir(folder_path):  # Check if the dropped item is a folder
 # Need to implement the function to handle the folder import
-                    img_files = file_utils.get_all_files_in_directory(folder_path)  # Call the function to get all files in the directory
+                    img_files = get_all_files_in_directory.get_all_files_in_directory(folder_path)  # Call the function to get all files in the directory
                     print(f"File list in folder: {img_files}")
                     folder_found = True
                     break
@@ -104,6 +105,14 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
+
+        # Example: install event filter on the import button
+        self.import_bnt.installEventFilter(self)
+        self.export_bnt.installEventFilter(self)
+        self.checkDup_bnt.installEventFilter(self)
+        self.changeTag_bnt.installEventFilter(self)
+        self.outputPath_bnt.installEventFilter(self)
+        # add more widgets as needed
         
 
         # Add buttons to the layout
@@ -376,7 +385,8 @@ class ImageWindow(QMainWindow):
         """Open a file explorer to select a folder and return the folder path."""
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder_path:  # If a folder is selected
-            print(f"Selected folder: {folder_path}")  # Print the selected folder path
+            file_list = get_all_files_in_directory.get_all_files_in_directory(folder_path)  # Call the function to get all files in the directory
+            print(f"Files in folder: {file_list}")  # Print the selected folder path
             return folder_path
         else:
             print("No folder selected.")  # Print a message if no folder is selected
@@ -400,3 +410,17 @@ class ImageWindow(QMainWindow):
         if dialog.exec():  # If the user clicks "OK"
             output_path = dialog.get_output_path()
             print(f"Output path set to: {output_path}")  # Handle the output path (e.g., save it)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Enter:
+            if obj == self.import_bnt:
+                print("Hovering over Import button")
+            elif obj == self.export_bnt:
+                print("Hovering over Export button")
+            elif obj == self.checkDup_bnt:
+                print("Hovering over Check Duplicate button")
+            elif obj == self.changeTag_bnt:
+                print("Hovering over Change Tag button")
+            elif obj == self.outputPath_bnt:
+                print("Hovering over Output Path button")
+        return super().eventFilter(obj, event)

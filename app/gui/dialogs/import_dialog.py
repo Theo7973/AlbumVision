@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import QDialog, QFileDialog
+from ...utils import get_all_files_in_directory  # Import the get_all_files_in_directory function
 
 class ImportDialog(QDialog):
     def __init__(self, parent=None):
@@ -12,6 +13,6 @@ class ImportDialog(QDialog):
         # Close the dialog immediately after folder selection
         self.accept() if self.folder_path else self.reject()
 
-    def get_selected_folder(self):
-        """Return the selected folder path."""
-        return self.folder_path
+    # def get_selected_folder(self):
+    #     """Return the selected folder path."""
+    #     return self.folder_path
