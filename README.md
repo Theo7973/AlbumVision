@@ -144,7 +144,10 @@ AlbumVision/
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributors
-- Theo Soliman (@Theo7973) - Project Lead and Main Developer
+- Theo Soliman- Dev
+- Austin Barlow -Dev
+- Chun Yu  - Dev
+- Eli'Sha Leonard- Dev
 
 ## Project Status
 AlbumVision is currently in **Beta** stage. Core functionality is implemented and working, but some features are still being refined and optimized. The application is usable but may contain bugs or performance issues.
