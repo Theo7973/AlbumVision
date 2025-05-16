@@ -14,7 +14,7 @@ from PySide6.QtCore import Qt, Signal, QEvent
 from pprint import pformat
 from ..utils import filter_non_image_files  # Import the filter_non_image_files function
 from ..utils import get_all_files_in_directory  # Import the get_all_files_in_directory function
-
+from ..utils import file_utils  # Import the file_utils module
 
 from .dialogs import export_dialog
 from .dialogs import change_tag_dialog
@@ -292,6 +292,7 @@ class ImageWindow(QMainWindow):
         # Connect the "Output Path" button to open the pop-up window
         self.import_bnt.clicked.connect(self.open_import_dialog)
         self.export_bnt.clicked.connect(self.open_export_dialog)
+        self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
         self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
         self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
 
@@ -415,7 +416,7 @@ class ImageWindow(QMainWindow):
     def show_duplicates_dialog(self):
         """Launch a dialog to show and delete detected duplicate images."""
         folder = self.image_dir
-        all_files = file_utils.get_all_files_in_directory(folder)
+        all_files = get_all_files_in_directory.get_all_files_in_directory(folder)
         image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
         duplicates = {}
         for i, img_path in enumerate(image_files):

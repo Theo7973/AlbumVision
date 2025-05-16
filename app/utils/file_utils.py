@@ -5,8 +5,9 @@ Import file, sort files, export files, set file path, fetch file metadata
 
 import os
 import sys
-
-
+import cv2
+import numpy as np
+import logging
 
 
 def filter_non_image_files(file_list):
@@ -47,6 +48,50 @@ def get_all_files_in_directory(directory):
             file_list.append(os.path.join(root, file))
     return file_list
 
+
+def find_duplicate_images(input_image_path, folder_path):
+    """
+    Check for duplicate images in a folder compared to the input image.
+
+    Args:
+        input_image_path (str): Path to the input image.
+        folder_path (str): Path to the folder containing images to compare.
+
+    Returns:
+        list: List of duplicate image paths.
+    """
+    # Load the input image
+    input_image = cv2.imread(input_image_path)
+
+    if input_image is None:
+        raise ValueError("The input image path is invalid or the image could not be loaded.")
+
+    duplicates = []
+
+    # Iterate through all files in the folder
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+
+        # Skip if the file is the input image itself or not an image
+        if file_path == input_image_path or not filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
+            continue
+
+        # Load the current image
+        current_image = cv2.imread(file_path)
+
+        if current_image is None:
+            continue
+
+        # Check if the dimensions of the images are the same
+        if input_image.shape != current_image.shape:
+            continue
+
+        # Compare the images pixel by pixel
+        difference = cv2.subtract(input_image, current_image)
+        if not np.any(difference):  # If no non-zero value in the difference, images are identical
+            duplicates.append(file_path)
+
+    return duplicates
 
 # Only for testing purposes
 # if __name__ == "__main__":
