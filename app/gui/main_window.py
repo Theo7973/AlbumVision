@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt, Signal, QEvent
 from pprint import pformat
 from ..utils import filter_non_image_files  # Import the filter_non_image_files function
 from ..utils import get_all_files_in_directory  # Import the get_all_files_in_directory function
+from ..utils import Get_MetaData  # Import the Get_MetaData class
 from ..utils import file_utils  # Import the file_utils module
 
 from .dialogs import export_dialog
@@ -21,10 +22,6 @@ from .dialogs import change_tag_dialog
 from .dialogs import output_dialog
 
 
-
-"""
-Custom drag-and-drop area for importing image folders.
-"""
 class DragDropArea(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -64,10 +61,9 @@ class DragDropArea(QFrame):
             for url in event.mimeData().urls():
                 folder_path = url.toLocalFile()
                 if os.path.isdir(folder_path):  # Check if the dropped item is a folder
-# <<<<<<< HEAD
-# Need to implement the function to handle the folder import
+
                     img_files = get_all_files_in_directory.get_all_files_in_directory(folder_path)  # Call the function to get all files in the directory
-# >>>>>>> Progress_Bar
+
                     print(f"File list in folder: {img_files}")
                     folder_found = True
                     break
@@ -116,14 +112,13 @@ class ImageWindow(QMainWindow):
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
 
-        # Example: install event filter on the import button
+         # install event filter on the import button
         self.import_bnt.installEventFilter(self)
         self.export_bnt.installEventFilter(self)
         self.checkDup_bnt.installEventFilter(self)
         self.changeTag_bnt.installEventFilter(self)
         self.outputPath_bnt.installEventFilter(self)
-        # add more widgets as needed
-        
+    
 
         # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
@@ -167,6 +162,8 @@ class ImageWindow(QMainWindow):
             button.setStyleSheet("font-size: 11px;")  # Set font size for the button
             button_group.addButton(button)  # Add the button to the group
             tab_btn_layout.addWidget(button)
+            button.installEventFilter(self)  # Install event filter for the button
+
 
         # Set the layout for the group box
         tag_btn_group_box.setLayout(tab_btn_layout)
@@ -202,6 +199,11 @@ class ImageWindow(QMainWindow):
         self.small_size_btn = QRadioButton("Small", self)
         self.medium_size_btn = QRadioButton("Medium", self)
         self.large_size_btn = QRadioButton("Large", self)
+
+        # Install event filter for each size button
+        self.small_size_btn.installEventFilter(self)
+        self.medium_size_btn.installEventFilter(self)
+        self.large_size_btn.installEventFilter(self)
 
         # Set default selection to Medium
         self.medium_size_btn.setChecked(True)
@@ -241,6 +243,7 @@ class ImageWindow(QMainWindow):
                 image_label.setFixedSize(260, 260)  # Default size
                 self.grid_layout.addWidget(image_label, row, col)
                 self.image_labels.append((image_label, pixmap))  # Store label and pixmap
+                image_label.installEventFilter(self)
 
                 # Connect the clicked signal to a custom slot
                 image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
@@ -267,6 +270,7 @@ class ImageWindow(QMainWindow):
 
         right_layout = QVBoxLayout()
         drag_drop_area = DragDropArea(self)
+        drag_drop_area.installEventFilter(self)  # Install event filter for drag-and-drop area
         right_layout.addWidget(drag_drop_area)
 
         info_layout = QVBoxLayout()
@@ -288,6 +292,7 @@ class ImageWindow(QMainWindow):
         right_widget.setLayout(right_layout)
         right_widget.setFixedWidth(300)
         main_layout.addWidget(right_widget)
+
 
         # Connect the "Output Path" button to open the pop-up window
         self.import_bnt.clicked.connect(self.open_import_dialog)
@@ -335,15 +340,17 @@ class ImageWindow(QMainWindow):
                 col = 0
                 row += 1
 
+
     def on_image_clicked(self, image_path):
         """Handle the image click event."""
-        metadata = file_utils.get_image_metadata(image_path)
+        metadata = Get_MetaData.get_image_metadata(image_path)
         if "error" in metadata:
             self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
         else:
             from pprint import pformat
             pretty_metadata = pformat(metadata, indent=2)
             self.img_info.setText(f"Metadata for:\n{image_path}\n\n{pretty_metadata}")
+
 
     def on_image_double_clicked(self, image_path):
         """Handle the image double-click event."""
@@ -358,6 +365,7 @@ class ImageWindow(QMainWindow):
         layout.addWidget(image_label)
         dialog.exec()
 
+
     def crop_center(self, pixmap):
         """Crop the center of a QPixmap to create a square crop based on the larger dimension."""
         pixmap_width = pixmap.width()
@@ -370,6 +378,7 @@ class ImageWindow(QMainWindow):
         # Crop the image to a square
         return pixmap.copy(x, y, crop_size, crop_size)
     
+
     def open_import_dialog(self):
         """Open a file explorer to select a folder and return the folder path."""
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -380,18 +389,21 @@ class ImageWindow(QMainWindow):
         else:
             print("No folder selected.")  # Print a message if no folder is selected
             return None
-            
+
+
     def open_export_dialog(self):
         """Open the Import  pop-up dialog."""
         dialog = export_dialog.ExportDialog(self)
         if dialog.exec():  # If the user clicks "OK"
             output_path = dialog.get_output_path()
 
+
     def open_change_tag_dialog(self):
         """Open the Import  pop-up dialog."""
         dialog = change_tag_dialog.ChangeTagDialog(self)
         if dialog.exec():  # If the user clicks "OK"
             output_path = dialog.get_output_path()
+
 
     def open_output_path_dialog(self):
         """Open the Output Path pop-up dialog."""
@@ -400,19 +412,36 @@ class ImageWindow(QMainWindow):
             output_path = dialog.get_output_path()
             print(f"Output path set to: {output_path}")  # Handle the output path (e.g., save it)
 
+
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Enter:
             if obj == self.import_bnt:
-                print("Hovering over Import button")
+                self.tool_tips.setText("Import images from a folder")
             elif obj == self.export_bnt:
-                print("Hovering over Export button")
+                self.tool_tips.setText("Export sorted images")
             elif obj == self.checkDup_bnt:
-                print("Hovering over Check Duplicate button")
+                self.tool_tips.setText("Check for duplicate images")
             elif obj == self.changeTag_bnt:
-                print("Hovering over Change Tag button")
+                self.tool_tips.setText("Change tags for selected images")
             elif obj == self.outputPath_bnt:
-                print("Hovering over Output Path button")
+                self.tool_tips.setText("Set the output path for exports")
+            elif obj == self.small_size_btn:
+                self.tool_tips.setText("Display images in small size (5x5 grid)")
+            elif obj == self.medium_size_btn:
+                self.tool_tips.setText("Display images in medium size (3x3 grid)")
+            elif obj == self.large_size_btn:
+                self.tool_tips.setText("Display images in large size (2x2 grid)")
+            elif isinstance(obj, QRadioButton):
+                self.tool_tips.setText("Display images in the selected tag category")
+            elif any(obj == label for label, _ in self.image_labels):
+                self.tool_tips.setText("Hovering over image")
+            elif isinstance(obj, DragDropArea):
+                self.tool_tips.setText("Drag and drop a folder here to import images")
+        elif event.type() == QEvent.Leave:
+            self.tool_tips.setText("Tool Tips")
         return super().eventFilter(obj, event)
+    
+
     def show_duplicates_dialog(self):
         """Launch a dialog to show and delete detected duplicate images."""
         folder = self.image_dir
