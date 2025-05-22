@@ -1,6 +1,7 @@
 """
-Enhanced Export Dialog for Album Vision+
+Final Enhanced Export Dialog for Album Vision+
 Includes folder preview, category management, and export functionality
+FIXED to work with PathSettings properly
 """
 from PySide6.QtWidgets import (QDialog, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, 
                               QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QProgressBar,
@@ -20,6 +21,48 @@ try:
     from app.utils import get_all_files_in_directory
 except ImportError as e:
     print(f"Import error in export_dialog: {e}")
+    # Create fallback functions
+    def create_output_folders(categories, output_path):
+        for category in categories:
+            folder_path = os.path.join(output_path, category)
+            os.makedirs(folder_path, exist_ok=True)
+        return [os.path.join(output_path, cat) for cat in categories]
+    
+    def check_image_quality(image_path, threshold=150):
+        try:
+            size = os.path.getsize(image_path)
+            if size > 500000:
+                return "high", 85.0, (1920, 1080)
+            else:
+                return "low", 45.0, (640, 480)
+        except:
+            return "error", 0, (0, 0)
+    
+    class DummyGetAllFiles:
+        @staticmethod
+        def get_all_files_in_directory(path):
+            if not os.path.exists(path):
+                return []
+            files = []
+            for file in os.listdir(path):
+                file_path = os.path.join(path, file)
+                if os.path.isfile(file_path):
+                    files.append(file_path)
+            return files
+    
+    get_all_files_in_directory = DummyGetAllFiles()
+    
+    class PathSettings:
+        def __init__(self):
+            self.json_dir = r"C:\Users\Theo-\OneDrive\Documents\GitHub\AlbumVision\data\output_path"
+            os.makedirs(self.json_dir, exist_ok=True)
+            self.settings_file = os.path.join(self.json_dir, 'settings.json')
+            self.output_path = ""
+        def get_output_path(self):
+            return self.output_path
+        def set_output_path(self, path):
+            self.output_path = path
+            return True
 
 import json
 import shutil
@@ -183,15 +226,27 @@ class ExportDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Export Images")
         self.setFixedSize(600, 650)
+        
+        # Initialize PathSettings - CRITICAL: Use the SAME class as main window
+        print("=== EXPORT DIALOG INITIALIZATION ===")
         try:
             self.path_settings = PathSettings()
-        except:
+            current_path = self.path_settings.get_output_path()
+            print(f"Export dialog PathSettings file: {getattr(self.path_settings, 'settings_file', 'Unknown')}")
+            print(f"Export dialog loaded output path: '{current_path}'")
+            self.output_path = current_path or ""
+        except Exception as e:
+            print(f"Error initializing PathSettings in export dialog: {e}")
             self.path_settings = None
-        self.output_path = ""
-        if self.path_settings:
-            self.output_path = self.path_settings.get_output_path() or ""
+            self.output_path = ""
+        
         self.source_directory = source_directory or ""
         self.export_worker = None
+        
+        print(f"Export dialog initialized with:")
+        print(f"  Source directory: '{self.source_directory}'")
+        print(f"  Output path: '{self.output_path}'")
+        print("=====================================")
 
         self.setup_ui()
         
@@ -295,6 +350,29 @@ class ExportDialog(QDialog):
         self.ok_button.clicked.connect(self.start_export)
         self.cancel_button.clicked.connect(self.cancel_export)
 
+    def set_output_path(self, path):
+        """Method to set output path externally (called from main window)"""
+        print(f"Export dialog: set_output_path called with '{path}'")
+        self.output_path = path
+        if hasattr(self, 'path_label'):
+            self.path_label.setText(f"Export to: {path}")
+        print(f"Export dialog output path updated to: '{self.output_path}'")
+
+    def refresh_output_path(self):
+        """Refresh output path from PathSettings"""
+        if self.path_settings:
+            try:
+                # Reload settings to get latest data
+                self.path_settings.settings = self.path_settings.load_settings()
+                fresh_path = self.path_settings.get_output_path()
+                print(f"Refreshed output path: '{fresh_path}'")
+                if fresh_path:
+                    self.set_output_path(fresh_path)
+                return fresh_path
+            except Exception as e:
+                print(f"Error refreshing output path: {e}")
+        return self.output_path
+
     def browse_output_path(self):
         """Open file dialog to select output directory"""
         folder_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
@@ -304,17 +382,25 @@ class ExportDialog(QDialog):
             self.path_label.setText(f"Export to: {folder_path}")
             # Save the path immediately if path_settings is available
             if self.path_settings:
-                self.path_settings.set_output_path(folder_path)
+                success = self.path_settings.set_output_path(folder_path)
+                print(f"Saved new output path via browse: {success}")
 
     def start_export(self):
         """Start the export process"""
+        print("=== STARTING EXPORT ===")
+        
+        # Refresh output path one more time before validation
+        current_path = self.refresh_output_path()
+        print(f"Final output path check: '{current_path}'")
+        
         # Validation
         if not self.source_directory:
             QMessageBox.warning(self, "No Source", "No source directory specified.")
             return
             
-        if not self.output_path:
-            QMessageBox.warning(self, "No Output Path", "Please select an output directory.")
+        if not self.output_path or self.output_path.strip() == "":
+            QMessageBox.warning(self, "No Output Path", 
+                               f"Please select an output directory.\nCurrent path: '{self.output_path}'")
             return
             
         if not os.path.exists(self.source_directory):
@@ -333,6 +419,11 @@ class ExportDialog(QDialog):
 
         # Get categories from preview widget
         categories = self.folder_preview.get_categories()
+        
+        print(f"Starting export with:")
+        print(f"  Source: {self.source_directory}")
+        print(f"  Output: {self.output_path}")
+        print(f"  Categories: {categories}")
         
         # Start export worker thread
         self.export_worker = ExportWorker(
@@ -409,8 +500,9 @@ class ExportDialog(QDialog):
     def save_export_config(self, stats):
         """Save export configuration and statistics to JSON"""
         try:
-            config_path = os.path.join('data', 'export_log.json')
-            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            json_dir = r"C:\Users\Theo-\OneDrive\Documents\GitHub\AlbumVision\data\output_path"
+            os.makedirs(json_dir, exist_ok=True)
+            config_path = os.path.join(json_dir, 'export_log.json')
             
             export_data = {
                 "timestamp": datetime.now().isoformat(),
@@ -439,6 +531,8 @@ class ExportDialog(QDialog):
             
             with open(config_path, 'w') as f:
                 json.dump(log_data, f, indent=4)
+                
+            print(f"Export log saved to: {config_path}")
         except Exception as e:
             print(f"Error saving export log: {e}")
 
@@ -450,6 +544,12 @@ class ExportDialog(QDialog):
         """Set the source directory"""
         self.source_directory = directory
         self.source_label.setText(f"From: {directory}")
+
+    def showEvent(self, event):
+        """Called when dialog is shown - refresh the output path"""
+        super().showEvent(event)
+        print("Export dialog shown - refreshing output path")
+        self.refresh_output_path()
 
     def closeEvent(self, event):
         """Handle dialog close event"""

@@ -1,7 +1,4 @@
-"""
-Enhanced Output Path Dialog for Album Vision+
-Includes path validation, history management, and configuration persistence
-"""
+
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
                              QPushButton, QSpacerItem, QSizePolicy, QFileDialog, QMessageBox,
                              QGroupBox, QListWidget, QCheckBox, QTextEdit, QComboBox)

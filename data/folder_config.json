@@ -1,0 +1,14 @@
+{
+    "categories": [
+        "Animal",
+        "Appliance",
+        "Cat",
+        "Dog",
+        "Entertainment_Device",
+        "Kitchenware",
+        "Person",
+        "Vehicle",
+        "Unknown"
+    ],
+    "output_path": "C:/Users/Theo-/OneDrive/Documents/GitHub/AlbumVision/output"
+}
