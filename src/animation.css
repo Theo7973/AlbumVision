@@ -1,0 +1,19 @@
+.intro-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #000;
+  color: white;
+}
+
+.logo {
+  width: 150px;
+  height: auto;
+}
+
+.tagline {
+  margin-top: 20px;
+  font-size: 1.5rem;
+}
