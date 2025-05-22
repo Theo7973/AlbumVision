@@ -1,0 +1,275 @@
+
+import os
+import json
+from datetime import datetime
+
+def get_json_save_directory():
+    """Get the specific directory for saving JSON files"""
+    json_dir = r"C:\Users\Theo-\OneDrive\Documents\GitHub\AlbumVision\data\output_path"
+    # Create directory if it doesn't exist
+    os.makedirs(json_dir, exist_ok=True)
+    return json_dir
+
+def save_output_path_config(output_path):
+    """Save output path configuration to JSON file"""
+    json_dir = get_json_save_directory()
+    config_path = os.path.join(json_dir, 'output_config.json')
+    
+    config_data = {
+        "output_path": output_path,
+        "timestamp": datetime.now().isoformat(),
+        "created_by": "AlbumVision+",
+        "version": "1.0"
+    }
+    
+    try:
+        with open(config_path, 'w') as f:
+            json.dump(config_data, f, indent=4)
+        print(f"Output config saved to: {config_path}")
+        return True
+    except Exception as e:
+        print(f"Error saving output config: {e}")
+        return False
+
+def save_export_log(source_dir, output_path, categories, stats):
+    """Save export log to JSON file"""
+    json_dir = get_json_save_directory()
+    log_path = os.path.join(json_dir, 'export_log.json')
+    
+    export_data = {
+        "timestamp": datetime.now().isoformat(),
+        "source_directory": source_dir,
+        "output_path": output_path,
+        "categories": categories,
+        "statistics": stats,
+        "created_by": "AlbumVision+",
+        "version": "1.0"
+    }
+    
+    # Load existing log or create new one
+    log_entries = []
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, 'r') as f:
+                log_entries = json.load(f)
+        except:
+            log_entries = []
+    
+    # Add new export entry
+    log_entries.append(export_data)
+    
+    # Keep only last 50 exports
+    if len(log_entries) > 50:
+        log_entries = log_entries[-50:]
+    
+    try:
+        with open(log_path, 'w') as f:
+            json.dump(log_entries, f, indent=4)
+        print(f"Export log saved to: {log_path}")
+        return True
+    except Exception as e:
+        print(f"Error saving export log: {e}")
+        return False
+
+def save_path_history(path_history):
+    """Save path history to JSON file"""
+    json_dir = get_json_save_directory()
+    history_path = os.path.join(json_dir, 'path_history.json')
+    
+    try:
+        with open(history_path, 'w') as f:
+            json.dump(path_history, f, indent=4)
+        print(f"Path history saved to: {history_path}")
+        return True
+    except Exception as e:
+        print(f"Error saving path history: {e}")
+        return False
+
+def load_json_config(filename):
+    """Load JSON configuration from the specific directory"""
+    json_dir = get_json_save_directory()
+    config_path = os.path.join(json_dir, filename)
+    
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading {filename}: {e}")
+            return None
+    return None
+
+def save_folder_config(categories, output_path):
+    """Save folder configuration to JSON file"""
+    json_dir = get_json_save_directory()
+    config_path = os.path.join(json_dir, 'folder_config.json')
+    
+    config_data = {
+        'categories': categories,
+        'output_path': output_path,
+        'timestamp': datetime.now().isoformat(),
+        'created_by': 'AlbumVision+',
+        'version': '1.0'
+    }
+    
+    try:
+        with open(config_path, 'w') as f:
+            json.dump(config_data, f, indent=4)
+        print(f"Folder config saved to: {config_path}")
+        return True
+    except Exception as e:
+        print(f"Error saving folder config: {e}")
+        return False
+
+def save_image_quality_results(image_path, quality_data):
+    """Save image quality analysis results to JSON file"""
+    json_dir = get_json_save_directory()
+    results_path = os.path.join(json_dir, 'quality_results.json')
+    
+    result_entry = {
+        "image_path": image_path,
+        "quality": quality_data['quality'],
+        "score": quality_data['score'],
+        "dimensions": quality_data['dimensions'],
+        "timestamp": datetime.now().isoformat(),
+        "analyzed_by": "AlbumVision+"
+    }
+    
+    # Load existing results or create new list
+    results = []
+    if os.path.exists(results_path):
+        try:
+            with open(results_path, 'r') as f:
+                results = json.load(f)
+        except:
+            results = []
+    
+    # Add new result
+    results.append(result_entry)
+    
+    # Keep only last 1000 results
+    if len(results) > 1000:
+        results = results[-1000:]
+    
+    try:
+        with open(results_path, 'w') as f:
+            json.dump(results, f, indent=4)
+        print(f"Quality results saved to: {results_path}")
+        return True
+    except Exception as e:
+        print(f"Error saving quality results: {e}")
+        return False
+
+# Updated PathSettings class to use the specific directory
+class PathSettings:
+    def __init__(self):
+        self.json_dir = get_json_save_directory()
+        self.settings_file = os.path.join(self.json_dir, 'settings.json')
+        self.settings = self.load_settings()
+    
+    def load_settings(self):
+        """Load settings from the specific JSON directory"""
+        if os.path.exists(self.settings_file):
+            try:
+                with open(self.settings_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading settings: {e}")
+                return {}
+        return {}
+    
+    def save_settings(self):
+        """Save settings to the specific JSON directory"""
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump(self.settings, f, indent=4)
+            print(f"Settings saved to: {self.settings_file}")
+            return True
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+            return False
+    
+    def get_output_path(self):
+        """Get the output path from settings"""
+        return self.settings.get('output_path', '')
+    
+    def set_output_path(self, path):
+        """Set the output path in settings"""
+        self.settings['output_path'] = path
+        self.settings['last_updated'] = datetime.now().isoformat()
+        return self.save_settings()
+
+# Example usage in your main_window.py methods:
+
+def open_output_path_dialog_updated(self):
+    """Updated method to save to specific directory"""
+    try:
+        dialog = output_dialog.OutputPathDialog(self)
+        if dialog.exec():
+            output_path = dialog.get_output_path()
+            print(f"Output path set to: {output_path}")
+            
+            # Save to the specific JSON directory
+            save_output_path_config(output_path)
+            
+            if self.tool_tips:
+                self.tool_tips.setText(f"Output path: {os.path.basename(output_path)}")
+    except Exception as e:
+        # Fallback - simple path selection
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
+        if folder_path:
+            self.path_settings.set_output_path(folder_path)
+            save_output_path_config(folder_path)
+            if self.tool_tips:
+                self.tool_tips.setText(f"Output path: {os.path.basename(folder_path)}")
+
+def on_image_clicked_updated(self, image_path):
+    """Updated method to save quality results"""
+    try:
+        # Get basic metadata
+        if hasattr(Get_MetaData, 'get_image_metadata'):
+            metadata = Get_MetaData.get_image_metadata(image_path)
+        else:
+            metadata = {
+                "filename": os.path.basename(image_path),
+                "size": os.path.getsize(image_path),
+                "path": image_path
+            }
+        
+        # Check image quality
+        quality, score, dimensions = check_image_quality(image_path)
+        
+        # Save quality results to JSON
+        quality_data = {
+            'quality': quality,
+            'score': score,
+            'dimensions': dimensions
+        }
+        save_image_quality_results(image_path, quality_data)
+        
+        # Display info (same as before)
+        if isinstance(metadata, dict) and "error" in metadata:
+            self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
+        else:
+            info_text = f"File: {os.path.basename(image_path)}\n\n"
+            
+            try:
+                file_size = os.path.getsize(image_path)
+                info_text += f"Size: {file_size:,} bytes\n"
+                info_text += f"Path: {image_path}\n\n"
+            except:
+                pass
+            
+            info_text += "Quality Analysis:\n"
+            info_text += f"Quality: {quality.upper()}\n"
+            info_text += f"Score: {score:.2f}\n"
+            info_text += f"Dimensions: {dimensions[0]} x {dimensions[1]}\n\n"
+            
+            if isinstance(metadata, dict) and len(metadata) > 3:
+                info_text += "Additional Metadata:\n"
+                for key, value in list(metadata.items())[:5]:
+                    info_text += f"{key}: {value}\n"
+            
+            self.img_info.setText(info_text)
+    except Exception as e:
+        self.img_info.setText(f"Error processing image:\n{str(e)}")
