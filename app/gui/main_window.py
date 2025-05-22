@@ -1,7 +1,4 @@
-"""
-    Main interface GUI for user to interact with Album Vision+.
-    Enhanced with image quality detection, export functionality, and folder management.
-"""
+
 import sys
 import os
 import shutil
