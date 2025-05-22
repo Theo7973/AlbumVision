@@ -2,7 +2,19 @@ import cv2
 import numpy as np
 
 def check_image_quality(image_path, threshold=150):
-    """Check if an image is blurry or low quality, considering image dimensions."""
+    """
+    Check if an image is blurry or low quality, considering image dimensions.
+    
+    Args:
+        image_path (str): Path to the image file
+        threshold (float): Base threshold for quality detection
+        
+    Returns:
+        tuple: (quality, score, dimensions)
+            - quality (str): "high", "low", or "error"
+            - score (float): Quality score
+            - dimensions (tuple): Image width and height
+    """
     try:
         img = cv2.imread(image_path)
         if img is None:
@@ -20,11 +32,11 @@ def check_image_quality(image_path, threshold=150):
         
         # Adjust threshold based on image size
         # Smaller images need lower thresholds
-        size_factor = min(width, height) / 500  # 500 is an empirical base size
+        size_factor = min(width, height) / 1000
         adjusted_threshold = threshold * max(0.5, size_factor)
         
         # Calculate resolution score
-        resolution_score = (height * width) / 1e6  # Normalize to megapixels
+        resolution_score = (height * width) / 1000000
         
         # Combine scores with size adjustment
         combined_score = (laplacian_var * 0.7 + resolution_score * 30) * size_factor

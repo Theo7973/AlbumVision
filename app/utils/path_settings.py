@@ -1,42 +1,39 @@
-import json
 import os
-from pathlib import Path
+import json
 
 class PathSettings:
-    def __init__(self, config_file="user_data/settings.json"):
-        self.config_file = config_file
-        self.settings = self._load_settings()
+    def __init__(self):
+        self.settings_file = os.path.join('data', 'settings.json')
+        self.settings = self.load_settings()
     
-    def _load_settings(self):
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+    def load_settings(self):
+        """Load settings from the settings file."""
+        os.makedirs(os.path.dirname(self.settings_file), exist_ok=True)
         
-        # Load existing settings or create default
-        if os.path.exists(self.config_file):
+        if os.path.exists(self.settings_file):
             try:
-                with open(self.config_file, 'r') as f:
+                with open(self.settings_file, 'r') as f:
                     return json.load(f)
-            except:
-                return {"input_path": "", "output_path": ""}
-        else:
-            return {"input_path": "", "output_path": ""}
+            except Exception as e:
+                print(f"Error loading settings: {e}")
+                return {}
+        return {}
     
     def save_settings(self):
-        with open(self.config_file, 'w') as f:
-            json.dump(self.settings, f, indent=4)
-    
-    def set_input_path(self, path):
-        self.settings["input_path"] = str(Path(path))
-        self.save_settings()
-        print(f"Input path set to: {path}")
-    
-    def set_output_path(self, path):
-        self.settings["output_path"] = str(Path(path))
-        self.save_settings()
-        print(f"Output path set to: {path}")
-    
-    def get_input_path(self):
-        return self.settings.get("input_path", "")
+        """Save settings to the settings file."""
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump(self.settings, f, indent=4)
+            return True
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+            return False
     
     def get_output_path(self):
-        return self.settings.get("output_path", "")
+        """Get the output path from settings."""
+        return self.settings.get('output_path', '')
+    
+    def set_output_path(self, path):
+        """Set the output path in settings."""
+        self.settings['output_path'] = path
+        return self.save_settings()

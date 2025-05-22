@@ -1,12 +1,14 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QPushButton, QLineEdit, QLabel
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, 
+                              QPushButton, QLineEdit, QLabel)
 from PySide6.QtCore import Qt
 
 class FolderPreviewWidget(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.categories = ["Animals", "Appliances", "Cats", "Dogs", 
-                          "Entertainment_Devices", "Kitchenware", 
-                          "People", "Vehicles", "Unknown"]
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Match categories to the UI radio buttons
+        self.categories = ["Animal", "Appliance", "Cat", "Dog", 
+                          "Entertainment_Device", "Kitchenware", 
+                          "Person", "Vehicle", "Unknown"]
         self.setup_ui()
         
     def setup_ui(self):
@@ -42,6 +44,7 @@ class FolderPreviewWidget(QWidget):
         self.setLayout(layout)
     
     def add_category(self):
+        """Add a new category to the list."""
         new_category = self.category_input.text().strip()
         if new_category and new_category not in self.categories:
             self.categories.append(new_category)
@@ -50,6 +53,7 @@ class FolderPreviewWidget(QWidget):
             print(f"Added category: {new_category}")
     
     def remove_category(self):
+        """Remove the selected category from the list."""
         current_item = self.folder_list.currentItem()
         if current_item:
             category = current_item.text()
@@ -58,4 +62,5 @@ class FolderPreviewWidget(QWidget):
             print(f"Removed category: {category}")
     
     def get_categories(self):
+        """Return the list of categories."""
         return self.categories
