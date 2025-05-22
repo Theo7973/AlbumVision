@@ -473,6 +473,7 @@ class ImageWindow(QMainWindow):
         dialog.setLayout(layout)
         dialog.exec()
 
+
     def delete_selected_duplicates(self, dialog):
         """Delete files selected in the duplicate review dialog."""
         for cb in self.dup_checkboxes:
