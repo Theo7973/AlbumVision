@@ -265,7 +265,7 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
-
+       
          # install event filter on the import button
         self.import_bnt.installEventFilter(self)
         self.export_bnt.installEventFilter(self)
@@ -273,12 +273,15 @@ class ImageWindow(QMainWindow):
         self.changeTag_bnt.installEventFilter(self)
         self.outputPath_bnt.installEventFilter(self)
 
+
         # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
         func_button_layout.addWidget(self.export_bnt)
         func_button_layout.addWidget(self.checkDup_bnt)
         func_button_layout.addWidget(self.changeTag_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
+        
+
 
         # Add the button layout to the left layout
         left_layout.addLayout(func_button_layout)
@@ -397,14 +400,14 @@ class ImageWindow(QMainWindow):
         self.img_info = QLabel(self)
         self.img_info.setText("Image Info and Metadata\n\nClick on an image to see its details and quality analysis.")
         self.img_info.setWordWrap(True)
-        self.img_info.setStyleSheet("border: 1px solid gray; padding: 10px; background-color: #f0f0f0;")
+        self.img_info.setStyleSheet("border: 1px solid gray; padding: 10px;")
         info_layout.addWidget(self.img_info, 4)
 
-        self.tool_tips = QLabel(self)
-        self.tool_tips.setText("Tool Tips\n\nHover over buttons and controls to see helpful information.")
-        self.tool_tips.setWordWrap(True)
-        self.tool_tips.setStyleSheet("border: 1px solid gray; padding: 5px; background-color: #e0e0e0;")
-        info_layout.addWidget(self.tool_tips, 1)
+        # self.tool_tips = QLabel(self)
+        # self.tool_tips.setText("Tool Tips\n\nHover over buttons and controls to see helpful information.")
+        # self.tool_tips.setWordWrap(True)
+        # self.tool_tips.setStyleSheet("border: 1px solid gray; padding: 5px;")
+        # info_layout.addWidget(self.tool_tips, 1)
 
         text_view_widget = QWidget(self)
         text_view_widget.setLayout(info_layout)
@@ -414,6 +417,19 @@ class ImageWindow(QMainWindow):
         right_widget.setLayout(right_layout)
         right_widget.setFixedWidth(300)
         main_layout.addWidget(right_widget)
+
+        # --- Add a new HBoxLayout to the bottom of the main layout ---
+        bottom_layout = QVBoxLayout()
+        # Example: Add the tool tip label to the bottom layout
+        self.tool_tips = QLabel(self)
+        self.tool_tips.setText("Tool Tips\n\nHover over buttons and controls to see helpful information.")
+        self.tool_tips.setWordWrap(True)
+        self.tool_tips.setStyleSheet("border: 1px solid gray; padding: 5px;")
+        bottom_layout.addWidget(self.tool_tips)
+        # You can add more widgets to bottom_layout if needed
+
+        # Add the bottom_layout to the main_layout
+        main_layout.addLayout(bottom_layout)
 
         # Connect the buttons to enhanced dialog methods
         self.import_bnt.clicked.connect(self.open_import_dialog)
@@ -912,6 +928,25 @@ class ImageWindow(QMainWindow):
             QMessageBox.information(self, "No Action", "No files were selected for deletion.")
         
         dialog.accept()
+
+
+    def set_mode(self, mode):
+        """Set the application stylesheet based on mode."""
+        if mode == "dark":
+            self.setStyleSheet(DARK_STYLESHEET)
+            self.mode_toggle_btn.setText("Switch to Light Mode")
+            self.mode_toggle_btn.setChecked(True)
+        else:
+            self.setStyleSheet(LIGHT_STYLESHEET)
+            self.mode_toggle_btn.setText("Switch to Dark Mode")
+            self.mode_toggle_btn.setChecked(False)
+
+    def toggle_mode(self):
+        """Toggle between dark and light mode."""
+        if self.mode_toggle_btn.isChecked():
+            self.set_mode("dark")
+        else:
+            self.set_mode("light")
 
 
 # Main execution block for testing
