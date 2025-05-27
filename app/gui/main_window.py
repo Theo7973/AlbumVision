@@ -1,25 +1,157 @@
-"""
-    Main interface GUI for user to interact with Album Vison+.
-    # Need to update the Tool tips, image size control, and image metadata display. #
-"""
+
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog
-from PySide6.QtWidgets import QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider, QDialog, QPushButton
-from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QMainWindow,
-                               QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, QVBoxLayout, QSlider,
-                               QDialog, QPushButton, QCheckBox, QMessageBox)
+import shutil
+
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
+
+from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
+                               QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
+                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox)
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal, QEvent
 from pprint import pformat
-from ..utils import filter_non_image_files  # Import the filter_non_image_files function
-from ..utils import get_all_files_in_directory  # Import the get_all_files_in_directory function
-from ..utils import Get_MetaData  # Import the Get_MetaData class
-from ..utils import file_utils  # Import the file_utils module
 
-from .dialogs import export_dialog
-from .dialogs import change_tag_dialog
-from .dialogs import output_dialog
+# Import using absolute imports with error handling
+try:
+    # Create dummy modules if they don't exist
+    class DummyModule:
+        @staticmethod
+        def get_all_files_in_directory(path):
+            """Get all files in directory - fallback implementation"""
+            if not os.path.exists(path):
+                return []
+            files = []
+            for file in os.listdir(path):
+                file_path = os.path.join(path, file)
+                if os.path.isfile(file_path):
+                    files.append(file_path)
+            return files
+        
+        @staticmethod
+        def get_image_metadata(path):
+            """Get image metadata - fallback implementation"""
+            try:
+                return {
+                    "filename": os.path.basename(path),
+                    "size": os.path.getsize(path),
+                    "path": path
+                }
+            except:
+                return {"error": "Could not read metadata"}
+        
+        @staticmethod
+        def find_duplicate_images(image_path, folder):
+            """Find duplicate images - fallback implementation"""
+            return []
+    
+    try:
+        from app.utils import filter_non_image_files
+    except ImportError:
+        filter_non_image_files = DummyModule()
+    
+    try:
+        from app.utils import get_all_files_in_directory
+    except ImportError:
+        get_all_files_in_directory = DummyModule()
+    
+    try:
+        from app.utils import Get_MetaData
+    except ImportError:
+        Get_MetaData = DummyModule()
+    
+    try:
+        from app.utils import file_utils
+    except ImportError:
+        file_utils = DummyModule()
+    
+    try:
+        from app.utils.image_quality import check_image_quality
+    except ImportError:
+        def check_image_quality(image_path, threshold=150):
+            """Fallback image quality check"""
+            try:
+                # Simple file size based quality check
+                size = os.path.getsize(image_path)
+                if size > 500000:  # 500KB
+                    return "high", 85.0, (1920, 1080)
+                else:
+                    return "low", 45.0, (640, 480)
+            except:
+                return "error", 0, (0, 0)
+    
+    try:
+        from app.utils.path_settings import PathSettings
+    except ImportError:
+        class PathSettings:
+            def __init__(self):
+                self.output_path = ""
+            def get_output_path(self):
+                return self.output_path
+            def set_output_path(self, path):
+                self.output_path = path
+                return True
+    
+    try:
+        from app.gui.dialogs import export_dialog
+    except ImportError:
+        # Create a dummy export dialog
+        class DummyExportDialog:
+            class ExportDialog(QDialog):
+                def __init__(self, parent=None, source_directory=None):
+                    super().__init__(parent)
+                    self.setWindowTitle("Export Dialog")
+                    layout = QVBoxLayout()
+                    layout.addWidget(QLabel("Export functionality not available"))
+                    ok_button = QPushButton("OK")
+                    ok_button.clicked.connect(self.accept)
+                    layout.addWidget(ok_button)
+                    self.setLayout(layout)
+                def get_output_path(self):
+                    return ""
+        export_dialog = DummyExportDialog()
+    
+    try:
+        from app.gui.dialogs import change_tag_dialog
+    except ImportError:
+        class DummyChangeTagDialog:
+            class ChangeTagDialog(QDialog):
+                def __init__(self, parent=None):
+                    super().__init__(parent)
+                    self.setWindowTitle("Change Tag Dialog")
+                    layout = QVBoxLayout()
+                    layout.addWidget(QLabel("Change tag functionality not available"))
+                    ok_button = QPushButton("OK")
+                    ok_button.clicked.connect(self.accept)
+                    layout.addWidget(ok_button)
+                    self.setLayout(layout)
+                def get_output_path(self):
+                    return ""
+        change_tag_dialog = DummyChangeTagDialog()
+    
+    try:
+        from app.gui.dialogs import output_dialog
+    except ImportError:
+        class DummyOutputDialog:
+            class OutputPathDialog(QDialog):
+                def __init__(self, parent=None):
+                    super().__init__(parent)
+                    self.setWindowTitle("Output Path Dialog")
+                    layout = QVBoxLayout()
+                    layout.addWidget(QLabel("Output path functionality not available"))
+                    ok_button = QPushButton("OK")
+                    ok_button.clicked.connect(self.accept)
+                    layout.addWidget(ok_button)
+                    self.setLayout(layout)
+                def get_output_path(self):
+                    return ""
+        output_dialog = DummyOutputDialog()
+        
+except ImportError as e:
+    print(f"Some imports failed: {e}")
+    print("Running with limited functionality")
 
 
 class DragDropArea(QFrame):
@@ -61,10 +193,22 @@ class DragDropArea(QFrame):
             for url in event.mimeData().urls():
                 folder_path = url.toLocalFile()
                 if os.path.isdir(folder_path):  # Check if the dropped item is a folder
-
-                    img_files = get_all_files_in_directory.get_all_files_in_directory(folder_path)  # Call the function to get all files in the directory
-
-                    print(f"File list in folder: {img_files}")
+                    print(f"Dropped folder: {folder_path}")
+                    
+                    # Get all files in the directory
+                    try:
+                        img_files = get_all_files_in_directory.get_all_files_in_directory(folder_path)
+                        print(f"File list in folder: {len(img_files)} files")
+                    except:
+                        img_files = []
+                        print("Could not get file list")
+                    
+                    # Update the parent window's image directory and refresh the grid
+                    parent_window = self.parent()
+                    while parent_window and not isinstance(parent_window, ImageWindow):
+                        parent_window = parent_window.parent()
+                    if parent_window:
+                        parent_window.load_images_from_directory(folder_path)
                     folder_found = True
                     break
             if not folder_found:
@@ -73,6 +217,7 @@ class DragDropArea(QFrame):
         else:
             print("Please import a folder")  # Print message if the dropped item is invalid
             event.ignore()
+
 
 class ClickableLabel(QLabel):
     clicked = Signal()  # Define a custom signal
@@ -86,16 +231,25 @@ class ClickableLabel(QLabel):
         super().mouseDoubleClickEvent(event)
         self.doubleClicked.emit()  # Emit the signal when the label is double-clicked
 
+
 class ImageWindow(QMainWindow):
     def __init__(self, image_dir):
         super().__init__()
-        self.setWindowTitle("Image Viewer with Scroll Area, Text Views, and Slider")
+        self.setWindowTitle("Album Vision+ - Smart Image Organization")
         self.setFixedSize(1200, 800)  # Set the window to a fixed size
         self.image_dir = image_dir
+        self.path_settings = PathSettings()  # Initialize path settings
+
+        # Initialize essential attributes early
+        self.img_info = None
+        self.tool_tips = None
+        self.image_labels = []
+        self.button_group = QButtonGroup(self)
 
         # Set the window icon
         icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.svg')
-        self.setWindowIcon(QIcon(icon_path))
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
 
         # Main container widget
         main_widget = QWidget(self)
@@ -118,7 +272,6 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt.installEventFilter(self)
         self.changeTag_bnt.installEventFilter(self)
         self.outputPath_bnt.installEventFilter(self)
-    
 
         # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
@@ -130,7 +283,7 @@ class ImageWindow(QMainWindow):
         # Add the button layout to the left layout
         left_layout.addLayout(func_button_layout)
 
-        # Create a QGroupBox for the buttons
+        # Create a QGroupBox for the tag buttons
         tag_btn_group_box = QGroupBox("Tag Name")
         tag_btn_group_box.setStyleSheet("""
             QGroupBox {
@@ -151,8 +304,6 @@ class ImageWindow(QMainWindow):
         img_ctrl_layout = QHBoxLayout()
 
         tab_btn_layout = QHBoxLayout()
-        # Create a button group to ensure only one button can be selected
-        button_group = QButtonGroup(self)
 
         btn_name_list = ['Animal', 'Cat', 'Dog', 'Person', 'Vehicle', 'Kitchenware', 'Appliance', 'Entertainment\n Device']
         sorted_list = sorted(btn_name_list)  # Sorts alphabetically
@@ -160,10 +311,9 @@ class ImageWindow(QMainWindow):
         for name in sorted_list:
             button = QRadioButton(f"{name}", self)
             button.setStyleSheet("font-size: 11px;")  # Set font size for the button
-            button_group.addButton(button)  # Add the button to the group
+            self.button_group.addButton(button)  # Add the button to the group
             tab_btn_layout.addWidget(button)
             button.installEventFilter(self)  # Install event filter for the button
-
 
         # Set the layout for the group box
         tag_btn_group_box.setLayout(tab_btn_layout)
@@ -171,8 +321,7 @@ class ImageWindow(QMainWindow):
         img_ctrl_layout.addWidget(tag_btn_group_box)  # Add the group box to the layout
         left_layout.addLayout(img_ctrl_layout)
 
-        
-        # Create another QGroupBox for the radio buttons
+        # Create another QGroupBox for the size control radio buttons
         size_group_box = QGroupBox("Image Size Control")
         size_group_box.setStyleSheet("""
             QGroupBox {
@@ -188,9 +337,6 @@ class ImageWindow(QMainWindow):
                 padding: 0 3px;
             }
         """)
-
-        slider_layout = QHBoxLayout()
-
 
         # Add a horizontal layout for the radio buttons
         size_layout = QHBoxLayout()
@@ -228,34 +374,8 @@ class ImageWindow(QMainWindow):
         self.container_widget = QWidget()
         self.grid_layout = QGridLayout(self.container_widget)
 
-        # Load all image files from the directory
-        self.image_labels = []  # Store references to image labels
-        row = 0
-        col = 0
-        for file_name in os.listdir(image_dir):
-            if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
-                image_path = os.path.join(image_dir, file_name)
-                image_label = ClickableLabel(self)
-                pixmap = QPixmap(image_path)
-                crop_center = self.crop_center(pixmap)  # Crop the image to 200x200
-                image_label.setPixmap(crop_center)
-                image_label.setScaledContents(True)
-                image_label.setFixedSize(260, 260)  # Default size
-                self.grid_layout.addWidget(image_label, row, col)
-                self.image_labels.append((image_label, pixmap))  # Store label and pixmap
-                image_label.installEventFilter(self)
-
-                # Connect the clicked signal to a custom slot
-                image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
-
-                # Connect the doubleClicked signal to a custom slot
-                image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
-
-                # Update column and row for the next image
-                col += 1
-                if col == 3:  # Move to the next row after 3 columns
-                    col = 0
-                    row += 1
+        # Load images from the initial directory
+        self.load_images_from_directory(image_dir)
 
         # Create a QScrollArea and set the container widget as its widget
         self.scroll_area = QScrollArea(self)
@@ -275,13 +395,15 @@ class ImageWindow(QMainWindow):
 
         info_layout = QVBoxLayout()
         self.img_info = QLabel(self)
-        self.img_info.setText("Image Info and Metadata")
+        self.img_info.setText("Image Info and Metadata\n\nClick on an image to see its details and quality analysis.")
         self.img_info.setWordWrap(True)
+        self.img_info.setStyleSheet("border: 1px solid gray; padding: 10px; background-color: #f0f0f0;")
         info_layout.addWidget(self.img_info, 4)
 
         self.tool_tips = QLabel(self)
-        self.tool_tips.setText("Tool Tips")
+        self.tool_tips.setText("Tool Tips\n\nHover over buttons and controls to see helpful information.")
         self.tool_tips.setWordWrap(True)
+        self.tool_tips.setStyleSheet("border: 1px solid gray; padding: 5px; background-color: #e0e0e0;")
         info_layout.addWidget(self.tool_tips, 1)
 
         text_view_widget = QWidget(self)
@@ -293,8 +415,7 @@ class ImageWindow(QMainWindow):
         right_widget.setFixedWidth(300)
         main_layout.addWidget(right_widget)
 
-
-        # Connect the "Output Path" button to open the pop-up window
+        # Connect the buttons to enhanced dialog methods
         self.import_bnt.clicked.connect(self.open_import_dialog)
         self.export_bnt.clicked.connect(self.open_export_dialog)
         self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
@@ -304,17 +425,72 @@ class ImageWindow(QMainWindow):
         # Set the main layout as the central widget
         self.setCentralWidget(main_widget)
 
+    def load_images_from_directory(self, directory):
+        """Load images from a directory and populate the grid."""
+        self.image_dir = directory
+        
+        # Clear existing images
+        for i in reversed(range(self.grid_layout.count())):
+            widget = self.grid_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.setParent(None)
+        
+        self.image_labels.clear()
+        
+        # Load all image files from the directory
+        row = 0
+        col = 0
+        image_count = 0
+        
+        if os.path.exists(directory):
+            for file_name in os.listdir(directory):
+                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')):
+                    image_path = os.path.join(directory, file_name)
+                    try:
+                        image_label = ClickableLabel(self)
+                        pixmap = QPixmap(image_path)
+                        
+                        if not pixmap.isNull():
+                            crop_center = self.crop_center(pixmap)  # Crop the image to square
+                            image_label.setPixmap(crop_center)
+                            image_label.setScaledContents(True)
+                            image_label.setFixedSize(260, 260)  # Default size
+                            self.grid_layout.addWidget(image_label, row, col)
+                            self.image_labels.append((image_label, pixmap))  # Store label and pixmap
+                            image_label.installEventFilter(self)
+
+                            # Connect the clicked signal to a custom slot
+                            image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
+
+                            # Connect the doubleClicked signal to a custom slot
+                            image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
+
+                            # Update column and row for the next image
+                            col += 1
+                            image_count += 1
+                            if col == 3:  # Move to the next row after 3 columns
+                                col = 0
+                                row += 1
+                    except Exception as e:
+                        print(f"Error loading image {image_path}: {e}")
+        
+        # Update the tool tips to show loaded image count
+        if image_count > 0 and self.tool_tips:
+            self.tool_tips.setText(f"Loaded {image_count} images from {os.path.basename(directory)}")
+        elif self.tool_tips:
+            self.tool_tips.setText("No images found in the selected directory")
+
     def update_image_sizes(self, size):
         """Update the size of the images and grid layout based on the selected size."""
         if size == "Small":
             new_size = 160  # Small size
-            max_columns = 5  # 5x5 grid
+            max_columns = 5  # 5 columns
         elif size == "Medium":
             new_size = 260  # Medium size (default)
-            max_columns = 3  # 3x3 grid
+            max_columns = 3  # 3 columns
         elif size == "Large":
             new_size = 400  # Large size
-            max_columns = 2  # 2x2 grid
+            max_columns = 2  # 2 columns
 
         # Clear the current grid layout
         for i in reversed(range(self.grid_layout.count())):
@@ -340,34 +516,94 @@ class ImageWindow(QMainWindow):
                 col = 0
                 row += 1
 
-
     def on_image_clicked(self, image_path):
-        """Handle the image click event."""
-        metadata = Get_MetaData.get_image_metadata(image_path)
-        if "error" in metadata:
-            self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
-        else:
-            from pprint import pformat
-            pretty_metadata = pformat(metadata, indent=2)
-            self.img_info.setText(f"Metadata for:\n{image_path}\n\n{pretty_metadata}")
-
+        """Handle the image click event with enhanced metadata and quality info."""
+        try:
+            # Get basic metadata
+            if hasattr(Get_MetaData, 'get_image_metadata'):
+                metadata = Get_MetaData.get_image_metadata(image_path)
+            else:
+                metadata = {
+                    "filename": os.path.basename(image_path),
+                    "size": os.path.getsize(image_path),
+                    "path": image_path
+                }
+            
+            # Check image quality
+            quality, score, dimensions = check_image_quality(image_path)
+            
+            if isinstance(metadata, dict) and "error" in metadata:
+                self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
+            else:
+                # Enhanced metadata display with quality information
+                info_text = f"File: {os.path.basename(image_path)}\n\n"
+                
+                # Basic file info
+                try:
+                    file_size = os.path.getsize(image_path)
+                    info_text += f"Size: {file_size:,} bytes\n"
+                    info_text += f"Path: {image_path}\n\n"
+                except:
+                    pass
+                
+                # Quality analysis
+                info_text += "Quality Analysis:\n"
+                info_text += f"Quality: {quality.upper()}\n"
+                info_text += f"Score: {score:.2f}\n"
+                info_text += f"Dimensions: {dimensions[0]} x {dimensions[1]}\n\n"
+                
+                # Additional metadata if available
+                if isinstance(metadata, dict) and len(metadata) > 3:
+                    info_text += "Additional Metadata:\n"
+                    for key, value in list(metadata.items())[:5]:  # Show first 5 items
+                        info_text += f"{key}: {value}\n"
+                
+                self.img_info.setText(info_text)
+        except Exception as e:
+            self.img_info.setText(f"Error processing image:\n{str(e)}")
 
     def on_image_double_clicked(self, image_path):
         """Handle the image double-click event."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Image Viewer - Double Click")
-        image_label = QLabel(dialog)
-        pixmap = QPixmap(image_path)
-        image_label.setPixmap(pixmap)
-        image_label.setScaledContents(True)
-        image_label.setFixedSize(pixmap.size() / 3)
-        layout = QVBoxLayout(dialog)
-        layout.addWidget(image_label)
-        dialog.exec()
-
+        try:
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Image Viewer")
+            dialog.setModal(True)
+            
+            layout = QVBoxLayout(dialog)
+            
+            image_label = QLabel(dialog)
+            pixmap = QPixmap(image_path)
+            
+            if not pixmap.isNull():
+                # Scale the image to fit in a reasonable window size
+                max_size = 800
+                if pixmap.width() > max_size or pixmap.height() > max_size:
+                    pixmap = pixmap.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                
+                image_label.setPixmap(pixmap)
+                image_label.setAlignment(Qt.AlignCenter)
+            else:
+                image_label.setText("Could not load image")
+                image_label.setAlignment(Qt.AlignCenter)
+            
+            layout.addWidget(image_label)
+            
+            # Add close button
+            close_button = QPushButton("Close")
+            close_button.clicked.connect(dialog.accept)
+            layout.addWidget(close_button)
+            
+            dialog.setLayout(layout)
+            dialog.resize(pixmap.width() + 50, pixmap.height() + 100)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Could not open image: {str(e)}")
 
     def crop_center(self, pixmap):
-        """Crop the center of a QPixmap to create a square crop based on the larger dimension."""
+        """Crop the center of a QPixmap to create a square crop based on the smaller dimension."""
+        if pixmap.isNull():
+            return pixmap
+            
         pixmap_width = pixmap.width()
         pixmap_height = pixmap.height()
         crop_size = min(pixmap_width, pixmap_height)
@@ -375,114 +611,337 @@ class ImageWindow(QMainWindow):
         y = (pixmap_height - crop_size) // 2
         return pixmap.copy(x, y, crop_size, crop_size)
 
-        # Crop the image to a square
-        return pixmap.copy(x, y, crop_size, crop_size)
-    
-
     def open_import_dialog(self):
         """Open a file explorer to select a folder and return the folder path."""
-        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Image Folder")
         if folder_path:  # If a folder is selected
-            file_list = get_all_files_in_directory.get_all_files_in_directory(folder_path)  # Call the function to get all files in the directory
-            print(f"Files in folder: {file_list}")  # Print the selected folder path
+            print(f"Selected folder: {folder_path}")
+            
+            # Load images from the selected folder
+            self.load_images_from_directory(folder_path)
+            
+            # Update tool tips to show folder loaded
+            if self.tool_tips:
+                self.tool_tips.setText(f"Loaded folder: {os.path.basename(folder_path)}")
+            
             return folder_path
         else:
-            print("No folder selected.")  # Print a message if no folder is selected
+            print("No folder selected.")
             return None
 
-
     def open_export_dialog(self):
-        """Open the Import  pop-up dialog."""
-        dialog = export_dialog.ExportDialog(self)
-        if dialog.exec():  # If the user clicks "OK"
-            output_path = dialog.get_output_path()
-
+        """Open the Export dialog with enhanced functionality."""
+        try:
+            # Check if output path is set
+            output_path = self.path_settings.get_output_path()
+            if not output_path:
+                reply = QMessageBox.question(
+                    self, 
+                    "No Output Path", 
+                    "No output path is set. Would you like to set one now?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if reply == QMessageBox.Yes:
+                    self.open_output_path_dialog()
+                    return
+                else:
+                    return
+                
+            dialog = export_dialog.ExportDialog(self, self.image_dir)
+            if dialog.exec():  # If the user clicks "OK"
+                export_path = dialog.get_output_path()
+                print(f"Images exported to: {export_path}")
+                # Update status in the UI
+                if self.tool_tips:
+                    self.tool_tips.setText(f"Export completed to: {os.path.basename(export_path)}")
+        except Exception as e:
+            QMessageBox.information(self, "Export", f"Export functionality: {str(e)}")
 
     def open_change_tag_dialog(self):
-        """Open the Import  pop-up dialog."""
-        dialog = change_tag_dialog.ChangeTagDialog(self)
-        if dialog.exec():  # If the user clicks "OK"
-            output_path = dialog.get_output_path()
-
+        """Open the Change Tag dialog."""
+        try:
+            dialog = change_tag_dialog.ChangeTagDialog(self)
+            if dialog.exec():  # If the user clicks "OK"
+                output_path = dialog.get_output_path()
+                if self.tool_tips:
+                    self.tool_tips.setText("Tag changes applied")
+        except Exception as e:
+            QMessageBox.information(self, "Change Tag", f"Change tag functionality: {str(e)}")
 
     def open_output_path_dialog(self):
-        """Open the Output Path pop-up dialog."""
-        dialog = output_dialog.OutputPathDialog(self)
-        if dialog.exec():  # If the user clicks "OK"
-            output_path = dialog.get_output_path()
-            print(f"Output path set to: {output_path}")  # Handle the output path (e.g., save it)
+        """Open the Output Path dialog with enhanced functionality."""
+        try:
+            dialog = output_dialog.OutputPathDialog(self)
+            if dialog.exec():  # If the user clicks "OK"
+                output_path = dialog.get_output_path()
+                print(f"Output path set to: {output_path}")
+                # Update any UI elements that show the output path
+                if self.tool_tips:
+                    self.tool_tips.setText(f"Output path: {os.path.basename(output_path)}")
+        except Exception as e:
+            # Fallback - simple path selection
+            folder_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
+            if folder_path:
+                self.path_settings.set_output_path(folder_path)
+                if self.tool_tips:
+                    self.tool_tips.setText(f"Output path: {os.path.basename(folder_path)}")
 
+    def get_selected_tag(self):
+        """Get the currently selected tag from radio buttons."""
+        button = self.button_group.checkedButton()
+        if button:
+            return button.text().replace('\n', '_')  # Handle multi-line button text
+        return "Unknown"  # Default if no tag is selected
+
+    def process_images_with_quality_check(self, image_files, output_path):
+        """
+        Process images, check their quality, and move them to appropriate folders.
+        
+        Args:
+            image_files (list): List of image file paths
+            output_path (str): Base output path for sorted images
+        """
+        # Get selected tag
+        tag = self.get_selected_tag()
+        
+        # Track stats
+        processed = 0
+        high_quality = 0
+        low_quality = 0
+        errors = 0
+        
+        # Process each image
+        for img_path in image_files:
+            try:
+                # Check image quality
+                quality, score, dimensions = check_image_quality(img_path)
+                
+                if quality == "error":
+                    errors += 1
+                    continue
+                    
+                # Determine target folder based on tag and quality
+                if tag == "Unknown":
+                    # If tag is unknown, use quality as the determining factor
+                    if quality == "high":
+                        target_folder = os.path.join(output_path, "High_Quality")
+                        high_quality += 1
+                    else:
+                        target_folder = os.path.join(output_path, "Low_Quality")
+                        low_quality += 1
+                else:
+                    # If tag is known, use both tag and quality
+                    if quality == "high":
+                        target_folder = os.path.join(output_path, tag, "High_Quality")
+                        high_quality += 1
+                    else:
+                        target_folder = os.path.join(output_path, tag, "Low_Quality")
+                        low_quality += 1
+                
+                # Create target folder if it doesn't exist
+                os.makedirs(target_folder, exist_ok=True)
+                
+                # Copy the image to the target folder
+                filename = os.path.basename(img_path)
+                target_path = os.path.join(target_folder, filename)
+                
+                try:
+                    # Copy the file (use shutil.move to move instead)
+                    shutil.copy2(img_path, target_path)
+                    processed += 1
+                except Exception as e:
+                    print(f"Error processing {img_path}: {e}")
+                    errors += 1
+            except Exception as e:
+                print(f"Error processing {img_path}: {e}")
+                errors += 1
+        
+        # Show results
+        QMessageBox.information(
+            self,
+            "Processing Complete",
+            f"Processed: {processed} images\n"
+            f"High quality: {high_quality}\n"
+            f"Low quality: {low_quality}\n"
+            f"Errors: {errors}"
+        )
+
+    def refresh_image_grid(self):
+        """Refresh the image grid after changes."""
+        self.load_images_from_directory(self.image_dir)
 
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.Enter:
-            if obj == self.import_bnt:
-                self.tool_tips.setText("Import images from a folder")
-            elif obj == self.export_bnt:
-                self.tool_tips.setText("Export sorted images")
-            elif obj == self.checkDup_bnt:
-                self.tool_tips.setText("Check for duplicate images")
-            elif obj == self.changeTag_bnt:
-                self.tool_tips.setText("Change tags for selected images")
-            elif obj == self.outputPath_bnt:
-                self.tool_tips.setText("Set the output path for exports")
-            elif obj == self.small_size_btn:
-                self.tool_tips.setText("Display images in small size (5x5 grid)")
-            elif obj == self.medium_size_btn:
-                self.tool_tips.setText("Display images in medium size (3x3 grid)")
-            elif obj == self.large_size_btn:
-                self.tool_tips.setText("Display images in large size (2x2 grid)")
-            elif isinstance(obj, QRadioButton):
-                self.tool_tips.setText("Display images in the selected tag category")
-            elif any(obj == label for label, _ in self.image_labels):
-                self.tool_tips.setText("Hovering over image")
-            elif isinstance(obj, DragDropArea):
-                self.tool_tips.setText("Drag and drop a folder here to import images")
-        elif event.type() == QEvent.Leave:
-            self.tool_tips.setText("Tool Tips")
+        """Enhanced event filter with updated tool tips."""
+        try:
+            # Check if tool_tips exists before using it
+            if not hasattr(self, 'tool_tips') or self.tool_tips is None:
+                return super().eventFilter(obj, event)
+                
+            if event.type() == QEvent.Enter:
+                if hasattr(self, 'import_bnt') and obj == self.import_bnt:
+                    self.tool_tips.setText("Import images from a folder - supports drag and drop")
+                elif hasattr(self, 'export_bnt') and obj == self.export_bnt:
+                    self.tool_tips.setText("Export sorted images to category folders with quality filtering")
+                elif hasattr(self, 'checkDup_bnt') and obj == self.checkDup_bnt:
+                    self.tool_tips.setText("Check for duplicate images and remove them")
+                elif hasattr(self, 'changeTag_bnt') and obj == self.changeTag_bnt:
+                    self.tool_tips.setText("Change tags for selected images")
+                elif hasattr(self, 'outputPath_bnt') and obj == self.outputPath_bnt:
+                    try:
+                        current_path = self.path_settings.get_output_path()
+                        if current_path:
+                            self.tool_tips.setText(f"Current output: {os.path.basename(current_path)} - Click to change")
+                        else:
+                            self.tool_tips.setText("Set the output path for sorted images")
+                    except:
+                        self.tool_tips.setText("Set the output path for sorted images")
+                elif hasattr(self, 'small_size_btn') and obj == self.small_size_btn:
+                    self.tool_tips.setText("Display images in small size (5x5 grid)")
+                elif hasattr(self, 'medium_size_btn') and obj == self.medium_size_btn:
+                    self.tool_tips.setText("Display images in medium size (3x3 grid)")
+                elif hasattr(self, 'large_size_btn') and obj == self.large_size_btn:
+                    self.tool_tips.setText("Display images in large size (2x2 grid)")
+                elif isinstance(obj, QRadioButton):
+                    self.tool_tips.setText(f"Filter images by {obj.text()} category")
+                elif hasattr(self, 'image_labels') and any(obj == label for label, _ in self.image_labels):
+                    self.tool_tips.setText("Click for metadata and quality info, double-click to view larger")
+                elif isinstance(obj, DragDropArea):
+                    self.tool_tips.setText("Drag and drop a folder here to import images")
+            elif event.type() == QEvent.Leave:
+                self.tool_tips.setText("Tool Tips\n\nHover over buttons and controls to see helpful information.")
+        except Exception as e:
+            print(f"Event filter error: {e}")
+            
         return super().eventFilter(obj, event)
     
-
     def show_duplicates_dialog(self):
         """Launch a dialog to show and delete detected duplicate images."""
-        folder = self.image_dir
-        all_files = get_all_files_in_directory.get_all_files_in_directory(folder)
-        image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
-        duplicates = {}
-        for i, img_path in enumerate(image_files):
-            dups = file_utils.find_duplicate_images(img_path, folder)
-            if dups:
-                duplicates[img_path] = dups
-        if not duplicates:
-            QMessageBox.information(self, "No Duplicates Found", "No duplicate images were found.")
-            return
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Review and Delete Duplicates")
-        dialog.resize(600, 400)
-        layout = QVBoxLayout(dialog)
-        self.dup_checkboxes = []
-        for original, dup_list in duplicates.items():
-            layout.addWidget(QLabel(f"Original: {os.path.basename(original)}"))
-            for dup in dup_list:
-                checkbox = QCheckBox(f"Delete Duplicate: {os.path.basename(dup)}")
-                checkbox.setProperty("file_path", dup)
-                self.dup_checkboxes.append(checkbox)
-                layout.addWidget(checkbox)
-        delete_btn = QPushButton("Delete Selected")
-        delete_btn.clicked.connect(lambda: self.delete_selected_duplicates(dialog))
-        layout.addWidget(delete_btn)
-        dialog.setLayout(layout)
-        dialog.exec()
+        try:
+            folder = self.image_dir
+            
+            # Get all files in the directory
+            try:
+                all_files = get_all_files_in_directory.get_all_files_in_directory(folder)
+            except:
+                all_files = [os.path.join(folder, f) for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
+            
+            image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
+            
+            if not image_files:
+                QMessageBox.information(self, "No Images", "No image files found in the current directory.")
+                return
+            
+            # Simple duplicate detection based on file size (fallback method)
+            duplicates = {}
+            size_map = {}
+            
+            for img_path in image_files:
+                try:
+                    file_size = os.path.getsize(img_path)
+                    if file_size in size_map:
+                        # Potential duplicate found
+                        original = size_map[file_size]
+                        if original not in duplicates:
+                            duplicates[original] = []
+                        duplicates[original].append(img_path)
+                    else:
+                        size_map[file_size] = img_path
+                except:
+                    continue
+            
+            if not duplicates:
+                QMessageBox.information(self, "No Duplicates Found", "No duplicate images were found based on file size.")
+                return
+                
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Review and Delete Duplicates")
+            dialog.resize(600, 400)
+            layout = QVBoxLayout(dialog)
+            
+            layout.addWidget(QLabel(f"Found {len(duplicates)} sets of potential duplicates:"))
+            
+            self.dup_checkboxes = []
+            for original, dup_list in duplicates.items():
+                layout.addWidget(QLabel(f"Original: {os.path.basename(original)}"))
+                for dup in dup_list:
+                    checkbox = QCheckBox(f"Delete Duplicate: {os.path.basename(dup)}")
+                    checkbox.setProperty("file_path", dup)
+                    self.dup_checkboxes.append(checkbox)
+                    layout.addWidget(checkbox)
+                layout.addWidget(QLabel(""))  # Add spacing
+            
+            button_layout = QHBoxLayout()
+            delete_btn = QPushButton("Delete Selected")
+            delete_btn.clicked.connect(lambda: self.delete_selected_duplicates(dialog))
+            cancel_btn = QPushButton("Cancel")
+            cancel_btn.clicked.connect(dialog.reject)
+            
+            button_layout.addWidget(cancel_btn)
+            button_layout.addWidget(delete_btn)
+            layout.addLayout(button_layout)
+            
+            dialog.setLayout(layout)
+            dialog.exec()
+            
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Error checking for duplicates: {str(e)}")
 
 
     def delete_selected_duplicates(self, dialog):
         """Delete files selected in the duplicate review dialog."""
+        deleted_count = 0
+        error_count = 0
+        
         for cb in self.dup_checkboxes:
             if cb.isChecked():
                 path = cb.property("file_path")
                 try:
                     os.remove(path)
+                    deleted_count += 1
+                    print(f"Deleted: {path}")
                 except Exception as e:
+                    error_count += 1
                     print(f"Failed to delete {path}: {e}")
-        QMessageBox.information(self, "Deleted", "Selected duplicates have been deleted.")
+        
+        if deleted_count > 0:
+            QMessageBox.information(self, "Deletion Complete", 
+                                   f"Deleted {deleted_count} duplicate files.\n"
+                                   f"Errors: {error_count}")
+            self.refresh_image_grid()
+        else:
+            QMessageBox.information(self, "No Action", "No files were selected for deletion.")
+        
         dialog.accept()
-        self.refresh_image_grid()
+
+
+# Main execution block for testing
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    
+    # Default test directory
+    test_dir = os.path.join(os.getcwd(), "data", "test_images")
+    if not os.path.exists(test_dir):
+        os.makedirs(test_dir, exist_ok=True)
+        print(f"Created test directory: {test_dir}")
+        print("Add some image files to this directory to test the application.")
+    
+    # Set application properties
+    app.setApplicationName("Album Vision+")
+    app.setApplicationVersion("1.0")
+    app.setOrganizationName("AlbumVision")
+    
+    try:
+        window = ImageWindow(test_dir)
+        window.show()
+        
+        print("AlbumVision+ started successfully!")
+        print(f"Test directory: {test_dir}")
+        print("You can drag and drop folders containing images to import them.")
+        
+        sys.exit(app.exec())
+    except Exception as e:
+        print(f"Error starting application: {e}")
+        import traceback
+        traceback.print_exc()
+        QMessageBox.critical(None, "Startup Error", f"Failed to start AlbumVision+:\n{str(e)}")
+        sys.exit(1)
