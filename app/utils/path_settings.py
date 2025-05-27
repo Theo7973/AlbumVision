@@ -8,9 +8,8 @@ from datetime import datetime
 class PathSettings:
     def __init__(self):
         # Use the specific directory you want for JSON files
-        self.json_dir = r"C:\Users\Theo-\OneDrive\Documents\GitHub\AlbumVision\data\output_path"
+        self.json_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "output_path")        
         os.makedirs(self.json_dir, exist_ok=True)
-        
         self.settings_file = os.path.join(self.json_dir, 'settings.json')
         self.output_config_file = os.path.join(self.json_dir, 'output_config.json')
         
