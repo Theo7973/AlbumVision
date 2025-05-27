@@ -24,5 +24,31 @@
             "low_quality": 6,
             "processed": 22
         }
+    },
+    {
+        "timestamp": "2025-05-22T13:22:06.922122",
+        "source_directory": "C:\\Users\\Theo-\\OneDrive\\Documents\\GitHub\\AlbumVision\\data\\test_images",
+        "output_path": "C:/Users/Theo-/OneDrive/Documents/GitHub/AlbumVision/output",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "boat"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Unknown": 22
+            },
+            "errors": 0,
+            "high_quality": 16,
+            "low_quality": 6,
+            "processed": 22
+        }
     }
 ]
