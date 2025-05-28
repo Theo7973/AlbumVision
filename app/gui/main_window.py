@@ -574,9 +574,9 @@ class ImageWindow(QMainWindow):
                 info_text += f"Dimensions: {dimensions[0]} x {dimensions[1]}\n\n"
                 
                 # Additional metadata if available
-                if isinstance(metadata, dict) and len(metadata) > 3:
+                if isinstance(metadata, dict):
                     info_text += "Additional Metadata:\n"
-                    for key, value in list(metadata.items())[:5]:  # Show first 5 items
+                    for key, value in metadata.items():
                         info_text += f"{key}: {value}\n"
                 
                 self.img_info.setText(info_text)
