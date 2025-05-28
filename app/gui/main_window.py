@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupB
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
                                QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox)
 from PySide6.QtGui import QPixmap, QIcon
-from PySide6.QtCore import Qt, Signal, QEvent
+from PySide6.QtCore import Qt, Signal, QEvent, QSize
 from pprint import pformat
 
 # Import using absolute imports with error handling
@@ -836,82 +836,89 @@ class ImageWindow(QMainWindow):
         return super().eventFilter(obj, event)
     
     def show_duplicates_dialog(self):
-        """Launch a dialog to show and delete detected duplicate images."""
-        try:
-            folder = self.image_dir
-            
-            # Get all files in the directory
+            """Launch a dialog to show and delete detected duplicate images with previews."""
             try:
-                all_files = get_all_files_in_directory.get_all_files_in_directory(folder)
-            except:
-                all_files = [os.path.join(folder, f) for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
-            
-            image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
-            
-            if not image_files:
-                QMessageBox.information(self, "No Images", "No image files found in the current directory.")
-                return
-            
-            # Simple duplicate detection based on file size (fallback method)
-            duplicates = {}
-            size_map = {}
-            
-            for img_path in image_files:
-                try:
-                    file_size = os.path.getsize(img_path)
-                    if file_size in size_map:
-                        # Potential duplicate found
-                        original = size_map[file_size]
-                        if original not in duplicates:
-                            duplicates[original] = []
-                        duplicates[original].append(img_path)
-                    else:
-                        size_map[file_size] = img_path
-                except:
-                    continue
-            
-            if not duplicates:
-                QMessageBox.information(self, "No Duplicates Found", "No duplicate images were found based on file size.")
-                return
-                
-            dialog = QDialog(self)
-            dialog.setWindowTitle("Review and Delete Duplicates")
-            dialog.resize(600, 400)
-            layout = QVBoxLayout(dialog)
-            
-            layout.addWidget(QLabel(f"Found {len(duplicates)} sets of potential duplicates:"))
-            
-            self.dup_checkboxes = []
-            for original, dup_list in duplicates.items():
-                layout.addWidget(QLabel(f"Original: {os.path.basename(original)}"))
-                for dup in dup_list:
-                    checkbox = QCheckBox(f"Delete Duplicate: {os.path.basename(dup)}")
-                    checkbox.setProperty("file_path", dup)
-                    self.dup_checkboxes.append(checkbox)
-                    layout.addWidget(checkbox)
-                layout.addWidget(QLabel(""))  # Add spacing
-            
-            button_layout = QHBoxLayout()
-            delete_btn = QPushButton("Delete Selected")
-            delete_btn.clicked.connect(lambda: self.delete_selected_duplicates(dialog))
-            cancel_btn = QPushButton("Cancel")
-            cancel_btn.clicked.connect(dialog.reject)
-            
-            button_layout.addWidget(cancel_btn)
-            button_layout.addWidget(delete_btn)
-            layout.addLayout(button_layout)
-            
-            dialog.setLayout(layout)
-            dialog.exec()
-            
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Error checking for duplicates: {str(e)}")
+                folder = self.image_dir
 
+                all_files = get_all_files_in_directory.get_all_files_in_directory(folder)
+                image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
+
+                if not image_files:
+                    QMessageBox.information(self, "No Images", "No image files found in the current directory.")
+                    return
+
+                duplicates = {}
+                seen_sizes = {}
+                for img_path in image_files:
+                    try:
+                        size = os.path.getsize(img_path)
+                        if size in seen_sizes:
+                            orig = seen_sizes[size]
+                            duplicates.setdefault(orig, []).append(img_path)
+                        else:
+                            seen_sizes[size] = img_path
+                    except:
+                        continue
+
+                if not duplicates:
+                    QMessageBox.information(self, "No Duplicates Found", "No duplicate images were found.")
+                    return
+
+                dialog = QDialog(self)
+                dialog.setWindowTitle("Review and Delete Duplicates")
+                dialog.resize(700, 500)
+
+                main_layout = QVBoxLayout(dialog)
+                main_layout.addWidget(QLabel(f"Found {len(duplicates)} sets of potential duplicates:"))
+
+                scroll = QScrollArea()
+                scroll_widget = QWidget()
+                scroll_layout = QVBoxLayout(scroll_widget)
+
+                self.dup_checkboxes = []
+
+                for original, dup_list in duplicates.items():
+                    scroll_layout.addWidget(QLabel(f"Original: {os.path.basename(original)}"))
+                    orig_img = QLabel()
+                    orig_img.setPixmap(QPixmap(original).scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    scroll_layout.addWidget(orig_img)
+
+                    for dup in dup_list:
+                        dup_img = QLabel()
+                        dup_img.setPixmap(QPixmap(dup).scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        scroll_layout.addWidget(dup_img)
+
+                        cb = QCheckBox(f"Delete Duplicate: {os.path.basename(dup)}")
+                        cb.setProperty("file_path", dup)
+                        self.dup_checkboxes.append(cb)
+                        scroll_layout.addWidget(cb)
+
+                    scroll_layout.addSpacing(20)
+
+                scroll.setWidget(scroll_widget)
+                scroll.setWidgetResizable(True)
+                main_layout.addWidget(scroll)
+
+                btn_layout = QHBoxLayout()
+                delete_btn = QPushButton("Delete Selected")
+                cancel_btn = QPushButton("Cancel")
+                delete_btn.clicked.connect(lambda: self.delete_selected_duplicates(dialog))
+                cancel_btn.clicked.connect(dialog.reject)
+                btn_layout.addWidget(cancel_btn)
+                btn_layout.addWidget(delete_btn)
+                main_layout.addLayout(btn_layout)
+
+                dialog.setLayout(main_layout)
+                dialog.exec()
+
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Error checking for duplicates: {str(e)}")
+    
     def delete_selected_duplicates(self, dialog):
         """Delete files selected in the duplicate review dialog."""
         deleted_count = 0
         error_count = 0
-        
+
         for cb in self.dup_checkboxes:
             if cb.isChecked():
                 path = cb.property("file_path")
@@ -922,64 +929,15 @@ class ImageWindow(QMainWindow):
                 except Exception as e:
                     error_count += 1
                     print(f"Failed to delete {path}: {e}")
-        
+
         if deleted_count > 0:
-            QMessageBox.information(self, "Deletion Complete", 
-                                   f"Deleted {deleted_count} duplicate files.\n"
-                                   f"Errors: {error_count}")
+            QMessageBox.information(
+                self,
+                "Deletion Complete",
+                f"Deleted {deleted_count} duplicate file(s).\nErrors: {error_count}"
+            )
             self.refresh_image_grid()
         else:
             QMessageBox.information(self, "No Action", "No files were selected for deletion.")
-        
-        dialog.accept()
 
-    def set_mode(self, mode):
-        """Set the application stylesheet based on mode."""
-        if mode == "dark":
-            self.setStyleSheet(DARK_STYLESHEET)
-            self.mode_toggle_btn.setText("Switch to Light Mode")
-            self.mode_toggle_btn.setChecked(True)
-        else:
-            self.setStyleSheet(LIGHT_STYLESHEET)
-            self.mode_toggle_btn.setText("Switch to Dark Mode")
-            self.mode_toggle_btn.setChecked(False)
-
-    def toggle_mode(self):
-        """Toggle between dark and light mode."""
-        if self.mode_toggle_btn.isChecked():
-            self.set_mode("dark")
-        else:
-            self.set_mode("light")
-
-
-# Main execution block for testing
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    
-    # Default test directory
-    test_dir = os.path.join(os.getcwd(), "data", "test_images")
-    if not os.path.exists(test_dir):
-        os.makedirs(test_dir, exist_ok=True)
-        print(f"Created test directory: {test_dir}")
-        print("Add some image files to this directory to test the application.")
-    
-    # Set application properties
-    app.setApplicationName("Album Vision+")
-    app.setApplicationVersion("1.0")
-    app.setOrganizationName("AlbumVision")
-    
-    try:
-        window = ImageWindow(test_dir)
-        window.show()
-        
-        print("AlbumVision+ started successfully!")
-        print(f"Test directory: {test_dir}")
-        print("You can drag and drop folders containing images to import them.")
-        
-        sys.exit(app.exec())
-    except Exception as e:
-        print(f"Error starting application: {e}")
-        import traceback
-        traceback.print_exc()
-        QMessageBox.critical(None, "Startup Error", f"Failed to start AlbumVision+:\n{str(e)}")
-        sys.exit(1)
+        dialog.accept()            
