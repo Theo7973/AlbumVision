@@ -398,7 +398,6 @@ class ImageWindow(QMainWindow):
         drag_drop_area = DragDropArea(self)
         drag_drop_area.installEventFilter(self)  # Install event filter for drag-and-drop area
 
-<<<<<<< Updated upstream
 
         # Create a vertical layout for the right-side widgets
         right_layout = QVBoxLayout()
@@ -406,8 +405,6 @@ class ImageWindow(QMainWindow):
 
        
 
-=======
->>>>>>> Stashed changes
         # Create a vertical layout for the text views
         info_layout = QVBoxLayout()
 
@@ -416,11 +413,8 @@ class ImageWindow(QMainWindow):
         self.img_info.setText("Image Info and Metadata")  # Set the text to display
         self.img_info.setWordWrap(True)  # Enable word wrapping for long text
         info_layout.addWidget(self.img_info, 4)  # 80% height
-<<<<<<< Updated upstream
 
     
-=======
->>>>>>> Stashed changes
 
         # Add the text view layout to the right layout
         text_view_widget = QWidget(self)
@@ -432,18 +426,6 @@ class ImageWindow(QMainWindow):
         right_widget.setLayout(right_layout)
         right_widget.setFixedWidth(300)  # Set the width of the right widget
         main_layout.addWidget(right_widget)  # 30% width
-<<<<<<< Updated upstream
-
-        # Add the main_layout (left/right panels) to the outer_layout
-        outer_layout.addLayout(main_layout)
-
-        # --- Add the tool tip label at the bottom of the window ---
-        self.tool_tips = QLabel(self)
-        self.tool_tips.setText("Tool Tips")
-        self.tool_tips.setWordWrap(True)
-        outer_layout.addWidget(self.tool_tips)
-=======
->>>>>>> Stashed changes
 
         # Add the main_layout (left/right panels) to the outer_layout
         outer_layout.addLayout(main_layout)
