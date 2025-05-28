@@ -253,7 +253,12 @@ class ImageWindow(QMainWindow):
 
         # Main container widget
         main_widget = QWidget(self)
-        main_layout = QHBoxLayout(main_widget)
+
+        # Create the outer vertical layout
+        outer_layout = QVBoxLayout(main_widget)
+
+        # Create your main horizontal layout (for left/right panels)
+        main_layout = QHBoxLayout()
 
         # Create a vertical layout for the left-side widgets
         left_layout = QVBoxLayout()
@@ -391,29 +396,44 @@ class ImageWindow(QMainWindow):
         right_layout = QVBoxLayout()
         drag_drop_area = DragDropArea(self)
         drag_drop_area.installEventFilter(self)  # Install event filter for drag-and-drop area
-        right_layout.addWidget(drag_drop_area)
 
+
+        # Create a vertical layout for the right-side widgets
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(drag_drop_area)  # Align to the top
+
+       
+
+        # Create a vertical layout for the text views
         info_layout = QVBoxLayout()
+
+        # Create the first QLabel for the text view
         self.img_info = QLabel(self)
-        self.img_info.setText("Image Info and Metadata\n\nClick on an image to see its details and quality analysis.")
-        self.img_info.setWordWrap(True)
-        self.img_info.setStyleSheet("border: 1px solid gray; padding: 10px; background-color: #f0f0f0;")
-        info_layout.addWidget(self.img_info, 4)
+        self.img_info.setText("Image Info and Metadata")  # Set the text to display
+        self.img_info.setWordWrap(True)  # Enable word wrapping for long text
+        info_layout.addWidget(self.img_info, 4)  # 80% height
 
-        self.tool_tips = QLabel(self)
-        self.tool_tips.setText("Tool Tips\n\nHover over buttons and controls to see helpful information.")
-        self.tool_tips.setWordWrap(True)
-        self.tool_tips.setStyleSheet("border: 1px solid gray; padding: 5px; background-color: #e0e0e0;")
-        info_layout.addWidget(self.tool_tips, 1)
+    
 
+        # Add the text view layout to the right layout
         text_view_widget = QWidget(self)
         text_view_widget.setLayout(info_layout)
         right_layout.addWidget(text_view_widget)
 
+        # Add the right layout to the main layout
         right_widget = QWidget(self)
         right_widget.setLayout(right_layout)
-        right_widget.setFixedWidth(300)
-        main_layout.addWidget(right_widget)
+        right_widget.setFixedWidth(300)  # Set the width of the right widget
+        main_layout.addWidget(right_widget)  # 30% width
+
+        # Add the main_layout (left/right panels) to the outer_layout
+        outer_layout.addLayout(main_layout)
+
+        # --- Add the tool tip label at the bottom of the window ---
+        self.tool_tips = QLabel(self)
+        self.tool_tips.setText("Tool Tips")
+        self.tool_tips.setWordWrap(True)
+        outer_layout.addWidget(self.tool_tips)
 
         # Connect the buttons to enhanced dialog methods
         self.import_bnt.clicked.connect(self.open_import_dialog)
@@ -808,7 +828,7 @@ class ImageWindow(QMainWindow):
                 elif isinstance(obj, DragDropArea):
                     self.tool_tips.setText("Drag and drop a folder here to import images")
             elif event.type() == QEvent.Leave:
-                self.tool_tips.setText("Tool Tips\n\nHover over buttons and controls to see helpful information.")
+                self.tool_tips.setText("Tool Tips")
         except Exception as e:
             print(f"Event filter error: {e}")
             
