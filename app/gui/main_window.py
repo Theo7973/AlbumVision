@@ -436,6 +436,13 @@ class ImageWindow(QMainWindow):
         self.tool_tips.setWordWrap(True)
         outer_layout.addWidget(self.tool_tips)
 
+        self.import_bnt.clicked.connect(self.open_import_dialog)
+        self.export_bnt.clicked.connect(self.open_export_dialog)
+        self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
+        self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
+        self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
+    
+
         # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
 
