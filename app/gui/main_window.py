@@ -270,7 +270,7 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
-
+       
          # install event filter on the import button
         self.import_bnt.installEventFilter(self)
         self.export_bnt.installEventFilter(self)
@@ -284,6 +284,7 @@ class ImageWindow(QMainWindow):
         func_button_layout.addWidget(self.checkDup_bnt)
         func_button_layout.addWidget(self.changeTag_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
+
 
         # Add the button layout to the left layout
         left_layout.addLayout(func_button_layout)
@@ -397,6 +398,7 @@ class ImageWindow(QMainWindow):
         drag_drop_area = DragDropArea(self)
         drag_drop_area.installEventFilter(self)  # Install event filter for drag-and-drop area
 
+<<<<<<< Updated upstream
 
         # Create a vertical layout for the right-side widgets
         right_layout = QVBoxLayout()
@@ -404,6 +406,8 @@ class ImageWindow(QMainWindow):
 
        
 
+=======
+>>>>>>> Stashed changes
         # Create a vertical layout for the text views
         info_layout = QVBoxLayout()
 
@@ -412,8 +416,11 @@ class ImageWindow(QMainWindow):
         self.img_info.setText("Image Info and Metadata")  # Set the text to display
         self.img_info.setWordWrap(True)  # Enable word wrapping for long text
         info_layout.addWidget(self.img_info, 4)  # 80% height
+<<<<<<< Updated upstream
 
     
+=======
+>>>>>>> Stashed changes
 
         # Add the text view layout to the right layout
         text_view_widget = QWidget(self)
@@ -425,6 +432,18 @@ class ImageWindow(QMainWindow):
         right_widget.setLayout(right_layout)
         right_widget.setFixedWidth(300)  # Set the width of the right widget
         main_layout.addWidget(right_widget)  # 30% width
+<<<<<<< Updated upstream
+
+        # Add the main_layout (left/right panels) to the outer_layout
+        outer_layout.addLayout(main_layout)
+
+        # --- Add the tool tip label at the bottom of the window ---
+        self.tool_tips = QLabel(self)
+        self.tool_tips.setText("Tool Tips")
+        self.tool_tips.setWordWrap(True)
+        outer_layout.addWidget(self.tool_tips)
+=======
+>>>>>>> Stashed changes
 
         # Add the main_layout (left/right panels) to the outer_layout
         outer_layout.addLayout(main_layout)
@@ -435,14 +454,7 @@ class ImageWindow(QMainWindow):
         self.tool_tips.setWordWrap(True)
         outer_layout.addWidget(self.tool_tips)
 
-        # Connect the buttons to enhanced dialog methods
-        self.import_bnt.clicked.connect(self.open_import_dialog)
-        self.export_bnt.clicked.connect(self.open_export_dialog)
-        self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
-        self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
-        self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
-
-        # Set the main layout as the central widget
+        # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
 
     def load_images_from_directory(self, directory):
@@ -931,6 +943,24 @@ class ImageWindow(QMainWindow):
             QMessageBox.information(self, "No Action", "No files were selected for deletion.")
         
         dialog.accept()
+
+    def set_mode(self, mode):
+        """Set the application stylesheet based on mode."""
+        if mode == "dark":
+            self.setStyleSheet(DARK_STYLESHEET)
+            self.mode_toggle_btn.setText("Switch to Light Mode")
+            self.mode_toggle_btn.setChecked(True)
+        else:
+            self.setStyleSheet(LIGHT_STYLESHEET)
+            self.mode_toggle_btn.setText("Switch to Dark Mode")
+            self.mode_toggle_btn.setChecked(False)
+
+    def toggle_mode(self):
+        """Toggle between dark and light mode."""
+        if self.mode_toggle_btn.isChecked():
+            self.set_mode("dark")
+        else:
+            self.set_mode("light")
 
 
 # Main execution block for testing
