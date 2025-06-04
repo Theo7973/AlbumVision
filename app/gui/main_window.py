@@ -2,6 +2,7 @@
 import sys
 import os
 import shutil
+from functools import partial
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -245,6 +246,9 @@ class ImageWindow(QMainWindow):
         self.tool_tips = None
         self.image_labels = []
         self.button_group = QButtonGroup(self)
+        self.selection_mode = False
+        self.selected_images = []
+        
 
         # Set the window icon
         icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.svg')
@@ -270,6 +274,9 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
+        self.select_mode_btn = QPushButton("Select Images", self)
+        self.select_mode_btn.setCheckable(True)
+        self.select_mode_btn.clicked.connect(self.toggle_selection_mode)
        
          # install event filter on the import button
         self.import_bnt.installEventFilter(self)
@@ -284,6 +291,11 @@ class ImageWindow(QMainWindow):
         func_button_layout.addWidget(self.checkDup_bnt)
         func_button_layout.addWidget(self.changeTag_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
+        func_button_layout.addWidget(self.select_mode_btn)
+        self.delete_selected_btn = QPushButton("Delete Selected", self)
+        self.delete_selected_btn.clicked.connect(self.delete_selected_images)
+        self.delete_selected_btn.setVisible(False)  # Only visible in selection mode
+        left_layout.addWidget(self.delete_selected_btn)
 
 
         # Add the button layout to the left layout
@@ -388,6 +400,7 @@ class ImageWindow(QMainWindow):
         self.scroll_area.setWidget(self.container_widget)
         self.scroll_area.setWidgetResizable(True)
         left_layout.addWidget(self.scroll_area, 1)
+        
 
         left_widget = QWidget(self)
         left_widget.setLayout(left_layout)
@@ -445,61 +458,140 @@ class ImageWindow(QMainWindow):
 
         # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
+        
+    def toggle_selection_mode(self):
+        """Enable or disable selection mode for deleting images."""
+        self.selection_mode = self.select_mode_btn.isChecked()
+        self.selected_images = []
+        self.delete_selected_btn.setVisible(self.selection_mode)
+
+        if self.selection_mode:
+            self.select_mode_btn.setText("Exit Selection Mode")
+            self.tool_tips.setText("Click the checkboxes below images to select them for deletion.")
+        else:
+            self.select_mode_btn.setText("Select Images")
+            self.tool_tips.setText("Tool Tips")
+
+        self.load_images_from_directory(self.image_dir)
+        
+    def update_selected_images(self, state):
+        checkbox = self.sender()
+        file_path = checkbox.property("file_path")
+
+        if file_path is None:
+            print("Checkbox missing file_path property")
+            return
+
+        if state == Qt.Checked:
+            if file_path not in self.selected_images:
+                self.selected_images.append(file_path)
+        else:
+            if file_path in self.selected_images:
+                self.selected_images.remove(file_path) 
+                
 
     def load_images_from_directory(self, directory):
-        """Load images from a directory and populate the grid."""
+        """Load images from a directory and populate the grid with optional checkboxes."""
         self.image_dir = directory
-        
+
         # Clear existing images
         for i in reversed(range(self.grid_layout.count())):
             widget = self.grid_layout.itemAt(i).widget()
             if widget is not None:
                 widget.setParent(None)
-        
+
         self.image_labels.clear()
-        
+
         # Load all image files from the directory
         row = 0
         col = 0
         image_count = 0
-        
+
         if os.path.exists(directory):
             for file_name in os.listdir(directory):
                 if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')):
                     image_path = os.path.join(directory, file_name)
                     try:
+                        image_widget = QWidget()
+                        layout = QVBoxLayout(image_widget)
+                        layout.setAlignment(Qt.AlignCenter)
+
                         image_label = ClickableLabel(self)
                         pixmap = QPixmap(image_path)
-                        
+
                         if not pixmap.isNull():
-                            crop_center = self.crop_center(pixmap)  # Crop the image to square
+                            crop_center = self.crop_center(pixmap)
                             image_label.setPixmap(crop_center)
                             image_label.setScaledContents(True)
-                            image_label.setFixedSize(260, 260)  # Default size
-                            self.grid_layout.addWidget(image_label, row, col)
-                            self.image_labels.append((image_label, pixmap))  # Store label and pixmap
+                            image_label.setFixedSize(260, 260)
+                            layout.addWidget(image_label)
+                            self.image_labels.append((image_label, pixmap, image_path))
+
                             image_label.installEventFilter(self)
-
-                            # Connect the clicked signal to a custom slot
                             image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
-
-                            # Connect the doubleClicked signal to a custom slot
                             image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
 
-                            # Update column and row for the next image
+                            # --- Add checkbox if selection mode is active ---
+                            if self.selection_mode:
+                                checkbox = QCheckBox("Select")
+                                checkbox.setStyleSheet("margin-left: 5px; font-size: 10px;")
+                                checkbox.setProperty("file_path", image_path)
+                                checkbox.stateChanged.connect(self.update_selected_images)
+
+                                if image_path in self.selected_images:
+                                    checkbox.setChecked(True)
+
+                                layout.addWidget(checkbox)
+                                self.image_labels.append((image_label, pixmap, image_path, checkbox))  # ADD checkbox
+                            else:
+                                self.image_labels.append((image_label, pixmap, image_path, None))
+                                layout.addSpacing(20)
+
+                            self.grid_layout.addWidget(image_widget, row, col)
                             col += 1
                             image_count += 1
-                            if col == 3:  # Move to the next row after 3 columns
+                            if col == 3:
                                 col = 0
                                 row += 1
                     except Exception as e:
                         print(f"Error loading image {image_path}: {e}")
-        
-        # Update the tool tips to show loaded image count
+
+        # Update the tool tips
         if image_count > 0 and self.tool_tips:
             self.tool_tips.setText(f"Loaded {image_count} images from {os.path.basename(directory)}")
         elif self.tool_tips:
             self.tool_tips.setText("No images found in the selected directory")
+            
+          
+                
+    def delete_selected_images(self):
+        """Delete all selected images from disk and refresh the grid."""
+        if not self.selected_images:
+            QMessageBox.information(self, "No Selection", "No images selected for deletion.")
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            f"Are you sure you want to delete {len(self.selected_images)} selected image(s)?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+
+        if confirm == QMessageBox.Yes:
+            deleted_count = 0
+            for path in self.selected_images:
+                try:
+                    os.remove(path)
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"Failed to delete {path}: {e}")
+
+            self.selected_images = []
+            self.load_images_from_directory(self.image_dir)
+
+            QMessageBox.information(
+                self, "Deleted", f"Deleted {deleted_count} image(s) successfully."
+            )           
 
     def update_image_sizes(self, size):
         """Update the size of the images and grid layout based on the selected size."""
@@ -522,18 +614,23 @@ class ImageWindow(QMainWindow):
         # Re-add images to the grid layout with the new size and grid configuration
         row = 0
         col = 0
-        for image_label, pixmap in self.image_labels:
+        for image_label, pixmap, image_path, checkbox in self.image_labels:
             cropped_pixmap = self.crop_center(pixmap)
             scaled_pixmap = cropped_pixmap.scaled(new_size, new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             image_label.setPixmap(scaled_pixmap)
             image_label.setFixedSize(new_size, new_size)
 
-            # Add the image label to the grid layout
-            self.grid_layout.addWidget(image_label, row, col)
+            container = QWidget()
+            layout = QVBoxLayout(container)
+            layout.setAlignment(Qt.AlignCenter)
+            layout.addWidget(image_label)
 
-            # Update column and row for the next image
+            if self.selection_mode and checkbox:
+                layout.addWidget(checkbox)
+
+            self.grid_layout.addWidget(container, row, col)
             col += 1
-            if col == max_columns:  # Move to the next row after reaching max columns
+            if col == max_columns:
                 col = 0
                 row += 1
 
@@ -824,7 +921,7 @@ class ImageWindow(QMainWindow):
                     self.tool_tips.setText("Display images in large size (2x2 grid)")
                 elif isinstance(obj, QRadioButton):
                     self.tool_tips.setText(f"Filter images by {obj.text()} category")
-                elif hasattr(self, 'image_labels') and any(obj == label for label, _ in self.image_labels):
+                elif hasattr(self, 'image_labels') and any(obj == label for label, _, _ in self.image_labels):
                     self.tool_tips.setText("Click for metadata and quality info, double-click to view larger")
                 elif isinstance(obj, DragDropArea):
                     self.tool_tips.setText("Drag and drop a folder here to import images")
