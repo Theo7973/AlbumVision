@@ -1,12 +1,4 @@
 {
-  "dependencies": {
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "framer-motion": "^10.0.0",
-    "mysql2": "^3.14.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
   "name": "albumvision",
   "version": "1.0.0",
   "private": true,
@@ -20,13 +12,26 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "electron": "electron .",
+    "backend": "node run-python.js",
+    "start": "concurrently \"npm run backend\" \"npm run electron\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "framer-motion": "^10.0.0",
+    "mysql2": "^3.14.1",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.4.1",
-    "vite": "^6.3.5"
+    "@vitejs/plugin-react": "^4.0.0",
+    "concurrently": "^8.0.0",
+    "electron": "^28.0.0",
+    "vite": "^6.0.0"
   }
 }
+

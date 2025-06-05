@@ -66,8 +66,8 @@ async def main():
     if pool:
         try:
             await init_db(pool)
-            await insert_sample(pool)
-            await get_latest(pool)
+            await insert_entry(pool)
+            await fetch_latest(pool)
         except Exception as e:
             print(f"❌ DB operation error: {e}")
         finally:

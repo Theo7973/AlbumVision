@@ -8,6 +8,7 @@ export default function IntroAnimation({ onFinish }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowAnimation(false);
+      fetch('http://localhost:3001/start-python');
       if (onFinish) onFinish();
     }, 2500);
 
