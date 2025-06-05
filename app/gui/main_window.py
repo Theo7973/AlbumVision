@@ -2,6 +2,8 @@
 import sys
 import os
 import shutil
+import asyncio
+from db_utils import db_connect, insert_entry, fetch_latest
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -209,6 +211,7 @@ class DragDropArea(QFrame):
                         parent_window = parent_window.parent()
                     if parent_window:
                         parent_window.load_images_from_directory(folder_path)
+                    self.save_to_database(folder_path, len(img_files))
                     folder_found = True
                     break
             if not folder_found:
@@ -218,7 +221,18 @@ class DragDropArea(QFrame):
             print("Please import a folder")  # Print message if the dropped item is invalid
             event.ignore()
 
+def save_to_database(self, folder_path, file_count):
+    # You can pass any data you want ( folder name or file count)
+    asyncio.create_task(self.insert_data(folder_path, file_count))
 
+async def insert_data(self, folder_path, file_count):
+    from db_utils import db_connect, insert_entry
+    pool = await db_connect()
+    entry_text = f"Imported folder: {os.path.basename(folder_path)} with {file_count} files"
+    await insert_entry(pool, entry_text)
+    pool.close()
+    await pool.wait_closed()
+    
 class ClickableLabel(QLabel):
     clicked = Signal()  # Define a custom signal
     doubleClicked = Signal()  # Define a custom signal for double click
