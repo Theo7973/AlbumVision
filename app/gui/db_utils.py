@@ -43,7 +43,7 @@ async def init_db(pool):
             """)
 
 
-async def insert_sample(pool):
+async def insert_entry(pool):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             entry_name = f"Test Entry {datetime.utcnow().isoformat()}"
@@ -53,7 +53,7 @@ async def insert_sample(pool):
             print(f"✅ Inserted! Entry: {entry_name}")
 
 
-async def get_latest(pool):
+async def fetch_latest(pool):
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute("SELECT * FROM test_entries ORDER BY created_at DESC LIMIT 5")
