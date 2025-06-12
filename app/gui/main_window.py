@@ -1,7 +1,14 @@
+# File: app/gui/widgets/main_window.py
+# Enhanced main window with modern UI, AI integration, and performance optimization
 
 import sys
 import os
 import shutil
+import asyncio
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+import logging
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -9,977 +16,1231 @@ sys.path.insert(0, project_root)
 
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
-                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox)
-from PySide6.QtGui import QPixmap, QIcon
-from PySide6.QtCore import Qt, Signal, QEvent
-from pprint import pformat
+                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox,
+                               QProgressBar, QLineEdit, QComboBox, QSplitter, QToolBar, QStatusBar,
+                               QMenuBar, QMenu, QToolButton, QTextEdit)
+from PySide6.QtGui import (QPixmap, QIcon, QPalette, QColor, QFont, QPainter, QBrush, 
+                          QLinearGradient, QAction, QShortcut, QKeySequence)
+from PySide6.QtCore import (Qt, Signal, QEvent, QTimer, QThread, QPropertyAnimation, 
+                           QEasingCurve, QRect, QSize, QEventLoop)
 
-# Import using absolute imports with error handling
+# Import enhanced modules
 try:
-    # Create dummy modules if they don't exist
-    class DummyModule:
-        @staticmethod
-        def get_all_files_in_directory(path):
-            """Get all files in directory - fallback implementation"""
-            if not os.path.exists(path):
-                return []
-            files = []
-            for file in os.listdir(path):
-                file_path = os.path.join(path, file)
-                if os.path.isfile(file_path):
-                    files.append(file_path)
-            return files
-        
-        @staticmethod
-        def get_image_metadata(path):
-            """Get image metadata - fallback implementation"""
-            try:
-                return {
-                    "filename": os.path.basename(path),
-                    "size": os.path.getsize(path),
-                    "path": path
-                }
-            except:
-                return {"error": "Could not read metadata"}
-        
-        @staticmethod
-        def find_duplicate_images(image_path, folder):
-            """Find duplicate images - fallback implementation"""
-            return []
-    
+    from app.utils.image_quality import EnhancedImageQualityChecker
+    # Try to import YOLOImageAnalyzer, fallback if not available
     try:
-        from app.utils import filter_non_image_files
+        from app.services.yolo_service import YOLOImageAnalyzer as AIImageAnalyzer
     except ImportError:
-        filter_non_image_files = DummyModule()
-    
-    try:
-        from app.utils import get_all_files_in_directory
-    except ImportError:
-        get_all_files_in_directory = DummyModule()
-    
-    try:
-        from app.utils import Get_MetaData
-    except ImportError:
-        Get_MetaData = DummyModule()
-    
-    try:
-        from app.utils import file_utils
-    except ImportError:
-        file_utils = DummyModule()
-    
-    try:
-        from app.utils.image_quality import check_image_quality
-    except ImportError:
-        def check_image_quality(image_path, threshold=150):
-            """Fallback image quality check"""
-            try:
-                # Simple file size based quality check
-                size = os.path.getsize(image_path)
-                if size > 500000:  # 500KB
-                    return "high", 85.0, (1920, 1080)
-                else:
-                    return "low", 45.0, (640, 480)
-            except:
-                return "error", 0, (0, 0)
-    
-    try:
-        from app.utils.path_settings import PathSettings
-    except ImportError:
-        class PathSettings:
-            def __init__(self):
-                self.output_path = ""
-            def get_output_path(self):
-                return self.output_path
-            def set_output_path(self, path):
-                self.output_path = path
-                return True
-    
-    try:
-        from app.gui.dialogs import export_dialog
-    except ImportError:
-        # Create a dummy export dialog
-        class DummyExportDialog:
-            class ExportDialog(QDialog):
-                def __init__(self, parent=None, source_directory=None):
-                    super().__init__(parent)
-                    self.setWindowTitle("Export Dialog")
-                    layout = QVBoxLayout()
-                    layout.addWidget(QLabel("Export functionality not available"))
-                    ok_button = QPushButton("OK")
-                    ok_button.clicked.connect(self.accept)
-                    layout.addWidget(ok_button)
-                    self.setLayout(layout)
-                def get_output_path(self):
-                    return ""
-        export_dialog = DummyExportDialog()
-    
-    try:
-        from app.gui.dialogs import change_tag_dialog
-    except ImportError:
-        class DummyChangeTagDialog:
-            class ChangeTagDialog(QDialog):
-                def __init__(self, parent=None):
-                    super().__init__(parent)
-                    self.setWindowTitle("Change Tag Dialog")
-                    layout = QVBoxLayout()
-                    layout.addWidget(QLabel("Change tag functionality not available"))
-                    ok_button = QPushButton("OK")
-                    ok_button.clicked.connect(self.accept)
-                    layout.addWidget(ok_button)
-                    self.setLayout(layout)
-                def get_output_path(self):
-                    return ""
-        change_tag_dialog = DummyChangeTagDialog()
-    
-    try:
-        from app.gui.dialogs import output_dialog
-    except ImportError:
-        class DummyOutputDialog:
-            class OutputPathDialog(QDialog):
-                def __init__(self, parent=None):
-                    super().__init__(parent)
-                    self.setWindowTitle("Output Path Dialog")
-                    layout = QVBoxLayout()
-                    layout.addWidget(QLabel("Output path functionality not available"))
-                    ok_button = QPushButton("OK")
-                    ok_button.clicked.connect(self.accept)
-                    layout.addWidget(ok_button)
-                    self.setLayout(layout)
-                def get_output_path(self):
-                    return ""
-        output_dialog = DummyOutputDialog()
-        
+        class AIImageAnalyzer:
+            async def analyze_image(self, path):
+                return {'category': 'Unknown', 'confidence': 0.0}
+    from app.utils.cache_manager import CacheManager, get_cache_manager
+    from app.utils.path_settings import PathSettings, create_enhanced_output_path_dialog
+    AI_FEATURES_AVAILABLE = True
 except ImportError as e:
-    print(f"Some imports failed: {e}")
-    print("Running with limited functionality")
+    print(f"Some enhanced features not available: {e}")
+    AI_FEATURES_AVAILABLE = False
+    
+    # Fallback imports
+    class EnhancedImageQualityChecker:
+        async def analyze_image_comprehensive(self, path, threshold=150):
+            return type('Result', (), {
+                'quality': 'medium', 'score': 75.0, 'dimensions': (1920, 1080),
+                'ai_category': 'Unknown', 'faces_detected': 0
+            })()
+    
+    class AIImageAnalyzer:
+        async def analyze_image(self, path):
+            return {'category': 'Unknown', 'confidence': 0.0}
+    
+    class CacheManager:
+        def get_thumbnail(self, path, size): return None
+        def put_thumbnail(self, path, size, pixmap): return True
+        def get_comprehensive_stats(self): return {}
 
+# Modern UI Styles
+MODERN_STYLE = """
+/* Modern Glassmorphism Theme */
+QMainWindow {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, 
+        stop:0 #667eea, stop:1 #764ba2);
+    color: #ffffff;
+}
 
-class DragDropArea(QFrame):
+QWidget {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    color: #ffffff;
+}
+
+/* Glass effect panels */
+QGroupBox {
+    font-weight: bold;
+    font-size: 13px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    margin-top: 12px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top center;
+    padding: 0 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #ffffff;
+}
+
+/* Modern buttons */
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 rgba(255, 255, 255, 0.3),
+        stop:1 rgba(255, 255, 255, 0.1));
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: bold;
+    font-size: 12px;
+    color: #ffffff;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 rgba(255, 255, 255, 0.4),
+        stop:1 rgba(255, 255, 255, 0.2));
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    transform: translateY(-1px);
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 rgba(255, 255, 255, 0.2),
+        stop:1 rgba(255, 255, 255, 0.1));
+    transform: translateY(1px);
+}
+
+/* AI-enhanced button */
+QPushButton#ai_button {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #ff6b6b, stop:1 #feca57);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+QPushButton#ai_button:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #ff5252, stop:1 #ffca28);
+}
+
+/* Radio buttons */
+QRadioButton {
+    font-size: 11px;
+    color: #ffffff;
+    spacing: 8px;
+}
+
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+QRadioButton::indicator:checked {
+    background: qradialgradient(cx:0.5, cy:0.5, radius:0.5,
+        stop:0 #4facfe, stop:1 #00f2fe);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+/* Scroll areas */
+QScrollArea {
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+QScrollBar:vertical {
+    background: rgba(255, 255, 255, 0.1);
+    width: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Progress bar */
+QProgressBar {
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #4facfe, stop:1 #00f2fe);
+    border-radius: 6px;
+}
+
+/* Status bar */
+QStatusBar {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Tool tips */
+QToolTip {
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    padding: 6px;
+    font-size: 11px;
+}
+
+/* Search box */
+QLineEdit {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 12px;
+    color: #ffffff;
+}
+
+QLineEdit:focus {
+    border: 2px solid rgba(79, 172, 254, 0.8);
+    background: rgba(255, 255, 255, 0.25);
+}
+
+QLineEdit::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+"""
+
+DARK_THEME_STYLE = """
+/* Dark Theme */
+QMainWindow {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, 
+        stop:0 #2c3e50, stop:1 #34495e);
+    color: #ecf0f1;
+}
+
+QWidget {
+    background-color: rgba(44, 62, 80, 0.7);
+    border-radius: 8px;
+    color: #ecf0f1;
+}
+
+QGroupBox {
+    border: 2px solid #7f8c8d;
+    background: rgba(44, 62, 80, 0.9);
+}
+
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #3498db, stop:1 #2980b9);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5dade2, stop:1 #3498db);
+}
+"""
+
+class ImageAnalysisWorker(QThread):
+    """Background worker for AI image analysis"""
+    analysis_complete = Signal(str, dict)  # image_path, analysis_result
+    progress_updated = Signal(int, int, str)  # current, total, current_file
+    
+    def __init__(self, image_paths: List[str]):
+        super().__init__()
+        self.image_paths = image_paths
+        self.ai_analyzer = AIImageAnalyzer()
+        self.quality_checker = EnhancedImageQualityChecker()
+        
+    def run(self):
+        """Run analysis on all images"""
+        total = len(self.image_paths)
+        
+        for i, image_path in enumerate(self.image_paths):
+            try:
+                # Run comprehensive analysis
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                quality_result = loop.run_until_complete(
+                    self.quality_checker.analyze_image_comprehensive(image_path)
+                )
+                
+                ai_result = loop.run_until_complete(
+                    self.ai_analyzer.analyze_image(image_path)
+                )
+                
+                # Combine results
+                combined_result = {
+                    'quality': quality_result.quality,
+                    'score': quality_result.score,
+                    'dimensions': quality_result.dimensions,
+                    'ai_category': ai_result.get('category', 'Unknown'),
+                    'ai_confidence': ai_result.get('confidence', 0.0),
+                    'faces': ai_result.get('faces', 0),
+                    'tags': ai_result.get('tags', []),
+                    'aesthetic_score': ai_result.get('aesthetic_score', 0.5)
+                }
+                
+                self.analysis_complete.emit(image_path, combined_result)
+                self.progress_updated.emit(i + 1, total, os.path.basename(image_path))
+                
+                loop.close()
+                
+            except Exception as e:
+                logging.error(f"Analysis failed for {image_path}: {e}")
+
+class SmartSearchWidget(QWidget):
+    """AI-powered search widget with natural language support"""
+    search_requested = Signal(str, dict)  # query, filters
+    
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAcceptDrops(True)  # Enable drag-and-drop
+        self.setup_ui()
+        
+    def setup_ui(self):
+        layout = QHBoxLayout(self)
+        
+        # Search input
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Search images: 'sunset with people' or 'high quality cats'...")
+        self.search_input.returnPressed.connect(self.perform_search)
+        
+        # Quick filters
+        self.quality_filter = QComboBox()
+        self.quality_filter.addItems(["All Quality", "Excellent", "High", "Medium", "Low"])
+        
+        self.category_filter = QComboBox()
+        self.category_filter.addItems(["All Categories", "People", "Animals", "Nature", "Vehicles", "Buildings"])
+        
+        # Search button
+        search_btn = QPushButton("Search")
+        search_btn.clicked.connect(self.perform_search)
+        
+        layout.addWidget(self.search_input, 3)
+        layout.addWidget(self.quality_filter, 1)
+        layout.addWidget(self.category_filter, 1)
+        layout.addWidget(search_btn)
+        
+    def perform_search(self):
+        """Perform smart search with AI assistance"""
+        query = self.search_input.text().strip()
+        
+        filters = {
+            'quality': self.quality_filter.currentText(),
+            'category': self.category_filter.currentText(),
+            'use_ai': True
+        }
+        
+        self.search_requested.emit(query, filters)
+
+class EnhancedDragDropArea(QFrame):
+    """Enhanced drag and drop area with modern styling and AI preview"""
+    files_dropped = Signal(list)  # List of file paths
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.setup_ui()
+        
+    def setup_ui(self):
         self.setStyleSheet("""
             QFrame {
-                border: 2px dashed gray;
-                border-radius: 5px;
-                background-color: none;
-                font: bold 12px;
-                color: #555;
-                text-align: center;
+                border: 3px dashed rgba(255, 255, 255, 0.4);
+                border-radius: 15px;
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(10px);
+            }
+            
+            QFrame:hover {
+                border: 3px dashed rgba(79, 172, 254, 0.8);
+                background: rgba(79, 172, 254, 0.1);
             }
         """)
-        self.setFixedWidth(291)  # Set a fixed width for the drag-and-drop area
-        self.setFixedHeight(100)  # Set a fixed height for the drag-and-drop area
-
-        # Add a QLabel to display the text
-        self.label = QLabel("Drag and Drop Folder Here", self)
-        self.label.setAlignment(Qt.AlignCenter)  # Center the text
-        self.label.setStyleSheet("font-size: 20px; color: #e0e0e0;border: none;")  # Style the text
-
-        # Use a layout to center the label inside the frame
+        
+        self.setFixedSize(300, 120)
+        
         layout = QVBoxLayout(self)
-        layout.addWidget(self.label)
-        layout.setAlignment(Qt.AlignCenter)
-
+        
+        # Icon and text
+        icon_label = QLabel("📁")
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setStyleSheet("font-size: 32px; border: none;")
+        
+        text_label = QLabel("Drop folders or images here")
+        text_label.setAlignment(Qt.AlignCenter)
+        text_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; border: none;")
+        
+        subtitle_label = QLabel("AI analysis included")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        subtitle_label.setStyleSheet("font-size: 11px; color: rgba(255, 255, 255, 0.7); border: none;")
+        
+        layout.addWidget(icon_label)
+        layout.addWidget(text_label)
+        layout.addWidget(subtitle_label)
+        
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            event.accept()  # Accept the drag event if it contains URLs
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        if event.mimeData().hasUrls():
-            folder_found = False
-            for url in event.mimeData().urls():
-                folder_path = url.toLocalFile()
-                if os.path.isdir(folder_path):  # Check if the dropped item is a folder
-                    print(f"Dropped folder: {folder_path}")
-                    
-                    # Get all files in the directory
-                    try:
-                        img_files = get_all_files_in_directory.get_all_files_in_directory(folder_path)
-                        print(f"File list in folder: {len(img_files)} files")
-                    except:
-                        img_files = []
-                        print("Could not get file list")
-                    
-                    # Update the parent window's image directory and refresh the grid
-                    parent_window = self.parent()
-                    while parent_window and not isinstance(parent_window, ImageWindow):
-                        parent_window = parent_window.parent()
-                    if parent_window:
-                        parent_window.load_images_from_directory(folder_path)
-                    folder_found = True
-                    break
-            if not folder_found:
-                print("Please import a folder")  # Print message if no folder is found
             event.accept()
         else:
-            print("Please import a folder")  # Print message if the dropped item is invalid
             event.ignore()
+            
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            file_paths = []
+            for url in event.mimeData().urls():
+                path = url.toLocalFile()
+                if os.path.exists(path):
+                    file_paths.append(path)
+            
+            if file_paths:
+                self.files_dropped.emit(file_paths)
+                
+        event.accept()
 
-
-class ClickableLabel(QLabel):
-    clicked = Signal()  # Define a custom signal
-    doubleClicked = Signal()  # Define a custom signal for double click
-
+class ModernImageLabel(QLabel):
+    """Enhanced image label with hover effects and AI info"""
+    clicked = Signal(str)  # image_path
+    right_clicked = Signal(str)  # image_path
+    
+    def __init__(self, image_path: str, parent=None):
+        super().__init__(parent)
+        self.image_path = image_path
+        self.ai_info = {}
+        self.setup_ui()
+        
+    def setup_ui(self):
+        self.setStyleSheet("""
+            QLabel {
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.05);
+                padding: 4px;
+            }
+            
+            QLabel:hover {
+                border: 2px solid rgba(79, 172, 254, 0.8);
+                background: rgba(79, 172, 254, 0.1);
+                transform: scale(1.02);
+            }
+        """)
+        
+        self.setScaledContents(True)
+        self.setAlignment(Qt.AlignCenter)
+        
+    def set_ai_info(self, ai_info: Dict):
+        """Set AI analysis information"""
+        self.ai_info = ai_info
+        
+        # Update tooltip with AI info
+        tooltip_text = f"Path: {os.path.basename(self.image_path)}\n"
+        if ai_info:
+            tooltip_text += f"Category: {ai_info.get('ai_category', 'Unknown')}\n"
+            tooltip_text += f"Quality: {ai_info.get('quality', 'Unknown')}\n"
+            tooltip_text += f"Faces: {ai_info.get('faces', 0)}\n"
+            if ai_info.get('tags'):
+                tooltip_text += f"Tags: {', '.join(ai_info['tags'][:3])}"
+                
+        self.setToolTip(tooltip_text)
+        
     def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit(self.image_path)
+        elif event.button() == Qt.RightButton:
+            self.right_clicked.emit(self.image_path)
         super().mousePressEvent(event)
-        self.clicked.emit()  # Emit the signal when the label is clicked
 
-    def mouseDoubleClickEvent(self, event):
-        super().mouseDoubleClickEvent(event)
-        self.doubleClicked.emit()  # Emit the signal when the label is double-clicked
-
-
-class ImageWindow(QMainWindow):
-    def __init__(self, image_dir):
+class EnhancedImageWindow(QMainWindow):
+    """Enhanced main window with modern UI and AI features"""
+    
+    def __init__(self, image_dir: str):
         super().__init__()
-        self.setWindowTitle("Album Vision+ - Smart Image Organization")
-        self.setFixedSize(1200, 800)  # Set the window to a fixed size
         self.image_dir = image_dir
-        self.path_settings = PathSettings()  # Initialize path settings
-
-        # Initialize essential attributes early
-        self.img_info = None
-        self.tool_tips = None
-        self.image_labels = []
-        self.button_group = QButtonGroup(self)
-
-        # Set the window icon
+        self.current_theme = "modern"
+        
+        # Initialize services
+        self.cache_manager = get_cache_manager()
+        self.path_settings = PathSettings()
+        self.ai_analyzer = AIImageAnalyzer() if AI_FEATURES_AVAILABLE else None
+        self.quality_checker = EnhancedImageQualityChecker() if AI_FEATURES_AVAILABLE else None
+        
+        # UI state
+        self.image_widgets = []  # List of (widget, image_path, ai_info)
+        self.current_filter = {}
+        self.analysis_results = {}  # Store AI analysis results
+        
+        # Setup logging
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+        
+        self.setup_ui()
+        self.apply_modern_theme()
+        self.load_images_from_directory(image_dir)
+        
+        # Setup async event loop for AI features
+        if AI_FEATURES_AVAILABLE:
+            self.setup_ai_features()
+    
+    def setup_ui(self):
+        """Setup the enhanced user interface"""
+        self.setWindowTitle("Album Vision+ Pro - AI-Powered Photo Organization")
+        self.setFixedSize(1400, 900)
+        
+        # Set window icon
         icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.svg')
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
-
-        # Main container widget
-        main_widget = QWidget(self)
-
-        # Create the outer vertical layout
-        outer_layout = QVBoxLayout(main_widget)
-
-        # Create your main horizontal layout (for left/right panels)
-        main_layout = QHBoxLayout()
-
-        # Create a vertical layout for the left-side widgets
-        left_layout = QVBoxLayout()
-
-        # Add a horizontal layout for the buttons (top left)
-        func_button_layout = QHBoxLayout()
-        self.import_bnt = QPushButton("Import", self)
-        self.export_bnt = QPushButton("Export", self)
-        self.checkDup_bnt = QPushButton("Check Duplicate", self)
-        self.changeTag_bnt = QPushButton("Change Tag", self)
-        self.outputPath_bnt = QPushButton("Output Path", self)
-       
-         # install event filter on the import button
-        self.import_bnt.installEventFilter(self)
-        self.export_bnt.installEventFilter(self)
-        self.checkDup_bnt.installEventFilter(self)
-        self.changeTag_bnt.installEventFilter(self)
-        self.outputPath_bnt.installEventFilter(self)
-
-        # Add buttons to the layout
-        func_button_layout.addWidget(self.import_bnt)
-        func_button_layout.addWidget(self.export_bnt)
-        func_button_layout.addWidget(self.checkDup_bnt)
-        func_button_layout.addWidget(self.changeTag_bnt)
-        func_button_layout.addWidget(self.outputPath_bnt)
-
-
-        # Add the button layout to the left layout
-        left_layout.addLayout(func_button_layout)
-
-        # Create a QGroupBox for the tag buttons
-        tag_btn_group_box = QGroupBox("Tag Name")
-        tag_btn_group_box.setStyleSheet("""
-            QGroupBox {
-                font: bold 12px;
-                border: 2px solid gray;
-                border-radius: 5px;
-                margin-top: 10px;
-                padding: 3px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center;
-                padding: 0 3px;
-            }
-        """)
-
-        # Add a horizontal layout for the image control widgets (above image area)
-        img_ctrl_layout = QHBoxLayout()
-
-        tab_btn_layout = QHBoxLayout()
-
-        btn_name_list = ['Animal', 'Cat', 'Dog', 'Person', 'Vehicle', 'Kitchenware', 'Appliance', 'Entertainment\n Device']
-        sorted_list = sorted(btn_name_list)  # Sorts alphabetically
-        sorted_list.append('Unknown')
-        for name in sorted_list:
-            button = QRadioButton(f"{name}", self)
-            button.setStyleSheet("font-size: 11px;")  # Set font size for the button
-            self.button_group.addButton(button)  # Add the button to the group
-            tab_btn_layout.addWidget(button)
-            button.installEventFilter(self)  # Install event filter for the button
-
-        # Set the layout for the group box
-        tag_btn_group_box.setLayout(tab_btn_layout)
-
-        img_ctrl_layout.addWidget(tag_btn_group_box)  # Add the group box to the layout
-        left_layout.addLayout(img_ctrl_layout)
-
-        # Create another QGroupBox for the size control radio buttons
-        size_group_box = QGroupBox("Image Size Control")
-        size_group_box.setStyleSheet("""
-            QGroupBox {
-                font: bold 12px;
-                border: 2px solid gray;
-                border-radius: 5px;
-                margin-top: 10px;
-                padding: 1px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center;
-                padding: 0 3px;
-            }
-        """)
-
-        # Add a horizontal layout for the radio buttons
-        size_layout = QHBoxLayout()
-
-        # Create radio buttons for Small, Medium, and Large sizes
-        self.small_size_btn = QRadioButton("Small", self)
-        self.medium_size_btn = QRadioButton("Medium", self)
-        self.large_size_btn = QRadioButton("Large", self)
-
-        # Install event filter for each size button
-        self.small_size_btn.installEventFilter(self)
-        self.medium_size_btn.installEventFilter(self)
-        self.large_size_btn.installEventFilter(self)
-
-        # Set default selection to Medium
-        self.medium_size_btn.setChecked(True)
-
-        # Connect the radio buttons to the update_image_sizes function
-        self.small_size_btn.toggled.connect(lambda: self.update_image_sizes("Small"))
-        self.medium_size_btn.toggled.connect(lambda: self.update_image_sizes("Medium"))
-        self.large_size_btn.toggled.connect(lambda: self.update_image_sizes("Large"))
-
-        # Add the radio buttons to the layout
-        size_layout.addWidget(self.small_size_btn)
-        size_layout.addWidget(self.medium_size_btn)
-        size_layout.addWidget(self.large_size_btn)
-
-        # Set the layout for the group box
-        size_group_box.setLayout(size_layout)
-
-        # Add the size group box to the left layout
-        img_ctrl_layout.addWidget(size_group_box)
-        left_layout.addLayout(img_ctrl_layout)
-
+        
+        # Setup menu bar and toolbar
+        self.setup_menu_bar()
+        self.setup_toolbar()
+        
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        
+        # Main splitter
+        main_splitter = QSplitter(Qt.Horizontal)
+        central_layout = QHBoxLayout(central_widget)
+        central_layout.addWidget(main_splitter)
+        
+        # Left panel
+        left_panel = self.create_left_panel()
+        main_splitter.addWidget(left_panel)
+        
+        # Right panel
+        right_panel = self.create_right_panel()
+        main_splitter.addWidget(right_panel)
+        
+        # Set splitter proportions
+        main_splitter.setSizes([1000, 400])
+        
+        # Setup status bar
+        self.setup_status_bar()
+        
+        # Connect signals
+        self.connect_signals()
+    
+    def setup_menu_bar(self):
+        """Setup modern menu bar"""
+        menubar = self.menuBar()
+        
+        # File menu
+        file_menu = menubar.addMenu("File")
+        
+        import_action = QAction("Import Folder", self)
+        import_action.setShortcut(QKeySequence("Ctrl+O"))
+        import_action.triggered.connect(self.open_import_dialog)
+        file_menu.addAction(import_action)
+        
+        export_action = QAction("Export Organized", self)
+        export_action.setShortcut(QKeySequence("Ctrl+E"))
+        export_action.triggered.connect(self.open_export_dialog)
+        file_menu.addAction(export_action)
+        
+        file_menu.addSeparator()
+        
+        settings_action = QAction("Settings", self)
+        settings_action.triggered.connect(self.open_settings)
+        file_menu.addAction(settings_action)
+        
+        # AI menu
+        ai_menu = menubar.addMenu("AI Analysis")
+        
+        analyze_all_action = QAction("Analyze All Images", self)
+        analyze_all_action.triggered.connect(self.start_ai_analysis)
+        ai_menu.addAction(analyze_all_action)
+        
+        clear_cache_action = QAction("Clear AI Cache", self)
+        clear_cache_action.triggered.connect(self.clear_ai_cache)
+        ai_menu.addAction(clear_cache_action)
+        
+        # View menu
+        view_menu = menubar.addMenu("View")
+        
+        theme_action = QAction("Toggle Theme", self)
+        theme_action.setShortcut(QKeySequence("Ctrl+T"))
+        theme_action.triggered.connect(self.toggle_theme)
+        view_menu.addAction(theme_action)
+        
+        stats_action = QAction("Cache Statistics", self)
+        stats_action.triggered.connect(self.show_cache_stats)
+        view_menu.addAction(stats_action)
+    
+    def setup_toolbar(self):
+        """Setup modern toolbar"""
+        toolbar = self.addToolBar("Main")
+        toolbar.setMovable(False)
+        
+        # Import button
+        import_btn = QToolButton()
+        import_btn.setText("📁 Import")
+        import_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        import_btn.clicked.connect(self.open_import_dialog)
+        toolbar.addWidget(import_btn)
+        
+        toolbar.addSeparator()
+        
+        # AI analysis button
+        ai_btn = QToolButton()
+        ai_btn.setText("🤖 AI Analysis")
+        ai_btn.setObjectName("ai_button")
+        ai_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        ai_btn.clicked.connect(self.start_ai_analysis)
+        ai_btn.setEnabled(AI_FEATURES_AVAILABLE)
+        toolbar.addWidget(ai_btn)
+        
+        toolbar.addSeparator()
+        
+        # Export button
+        export_btn = QToolButton()
+        export_btn.setText("📤 Export")
+        export_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        export_btn.clicked.connect(self.open_export_dialog)
+        toolbar.addWidget(export_btn)
+        
+        # Stretch
+        spacer = QWidget()
+        spacer.setSizePolicy(QWidget.Expanding, QWidget.Preferred)
+        toolbar.addWidget(spacer)
+        
+        # Theme toggle
+        theme_btn = QToolButton()
+        theme_btn.setText("🎨")
+        theme_btn.setToolTip("Toggle Theme")
+        theme_btn.clicked.connect(self.toggle_theme)
+        toolbar.addWidget(theme_btn)
+    
+    def create_left_panel(self) -> QWidget:
+        """Create the left panel with controls and image grid"""
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        
+        # Smart search widget
+        self.search_widget = SmartSearchWidget()
+        self.search_widget.search_requested.connect(self.perform_smart_search)
+        left_layout.addWidget(self.search_widget)
+        
+        # Function buttons
+        func_layout = QHBoxLayout()
+        
+        self.import_btn = QPushButton("📁 Import")
+        self.export_btn = QPushButton("📤 Export")
+        self.ai_analyze_btn = QPushButton("🤖 AI Analyze")
+        self.organize_btn = QPushButton("📂 Auto-Organize")
+        
+        self.ai_analyze_btn.setEnabled(AI_FEATURES_AVAILABLE)
+        
+        func_layout.addWidget(self.import_btn)
+        func_layout.addWidget(self.export_btn)
+        func_layout.addWidget(self.ai_analyze_btn)
+        func_layout.addWidget(self.organize_btn)
+        
+        left_layout.addLayout(func_layout)
+        
+        # Category filters with AI enhancement
+        category_group = QGroupBox("🏷️ Smart Categories")
+        category_layout = QHBoxLayout(category_group)
+        
+        self.category_buttons = QButtonGroup()
+        categories = ['All', 'People', 'Animals', 'Nature', 'Vehicles', 'Buildings', 'Documents', 'Unknown']
+        
+        for category in categories:
+            btn = QRadioButton(category)
+            self.category_buttons.addButton(btn)
+            category_layout.addWidget(btn)
+            btn.toggled.connect(lambda checked, cat=category: self.filter_by_category(cat) if checked else None)
+        
+        # Set "All" as default
+        self.category_buttons.buttons()[0].setChecked(True)
+        left_layout.addWidget(category_group)
+        
+        # Quality filter
+        quality_group = QGroupBox("⭐ Quality Filter")
+        quality_layout = QHBoxLayout(quality_group)
+        
+        self.quality_buttons = QButtonGroup()
+        qualities = ['All', 'Excellent', 'High', 'Medium', 'Low']
+        
+        for quality in qualities:
+            btn = QRadioButton(quality)
+            self.quality_buttons.addButton(btn)
+            quality_layout.addWidget(btn)
+            btn.toggled.connect(lambda checked, qual=quality: self.filter_by_quality(qual) if checked else None)
+        
+        self.quality_buttons.buttons()[0].setChecked(True)
+        left_layout.addWidget(quality_group)
+        
+        # Size controls
+        size_group = QGroupBox("🖼️ View Size")
+        size_layout = QHBoxLayout(size_group)
+        
+        self.size_buttons = QButtonGroup()
+        sizes = [('Small', 160), ('Medium', 220), ('Large', 300)]
+        
+        for size_name, size_px in sizes:
+            btn = QRadioButton(size_name)
+            self.size_buttons.addButton(btn)
+            size_layout.addWidget(btn)
+            btn.toggled.connect(lambda checked, s=size_px: self.update_image_sizes(s) if checked else None)
+        
+        # Set Medium as default
+        self.size_buttons.buttons()[1].setChecked(True)
+        left_layout.addWidget(size_group)
+        
+        # Progress bar for AI analysis
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        left_layout.addWidget(self.progress_bar)
+        
+        # Scroll area for images
+        self.scroll_area = QScrollArea()
         self.container_widget = QWidget()
         self.grid_layout = QGridLayout(self.container_widget)
-
-        # Load images from the initial directory
-        self.load_images_from_directory(image_dir)
-
-        # Create a QScrollArea and set the container widget as its widget
-        self.scroll_area = QScrollArea(self)
+        
         self.scroll_area.setWidget(self.container_widget)
         self.scroll_area.setWidgetResizable(True)
         left_layout.addWidget(self.scroll_area, 1)
-
-        left_widget = QWidget(self)
-        left_widget.setLayout(left_layout)
-        left_widget.setFixedWidth(900)
-        main_layout.addWidget(left_widget)
-
-        right_layout = QVBoxLayout()
-        drag_drop_area = DragDropArea(self)
-        drag_drop_area.installEventFilter(self)  # Install event filter for drag-and-drop area
-
-
-        # Create a vertical layout for the right-side widgets
-        right_layout = QVBoxLayout()
-        right_layout.addWidget(drag_drop_area)  # Align to the top
-
-       
-
-        # Create a vertical layout for the text views
-        info_layout = QVBoxLayout()
-
-        # Create the first QLabel for the text view
-        self.img_info = QLabel(self)
-        self.img_info.setText("Image Info and Metadata")  # Set the text to display
-        self.img_info.setWordWrap(True)  # Enable word wrapping for long text
-        info_layout.addWidget(self.img_info, 4)  # 80% height
-
+        
+        return left_widget
     
-
-        # Add the text view layout to the right layout
-        text_view_widget = QWidget(self)
-        text_view_widget.setLayout(info_layout)
-        right_layout.addWidget(text_view_widget)
-
-        # Add the right layout to the main layout
-        right_widget = QWidget(self)
-        right_widget.setLayout(right_layout)
-        right_widget.setFixedWidth(300)  # Set the width of the right widget
-        main_layout.addWidget(right_widget)  # 30% width
-
-        # Add the main_layout (left/right panels) to the outer_layout
-        outer_layout.addLayout(main_layout)
-
-        # --- Add the tool tip label at the bottom of the window ---
-        self.tool_tips = QLabel(self)
-        self.tool_tips.setText("Tool Tips")
-        self.tool_tips.setWordWrap(True)
-        outer_layout.addWidget(self.tool_tips)
-
-        self.import_bnt.clicked.connect(self.open_import_dialog)
-        self.export_bnt.clicked.connect(self.open_export_dialog)
-        self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
-        self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
-        self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
+    def create_right_panel(self) -> QWidget:
+        """Create the right panel with drag-drop and info"""
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        
+        # Enhanced drag-drop area
+        self.drop_area = EnhancedDragDropArea()
+        self.drop_area.files_dropped.connect(self.handle_dropped_files)
+        right_layout.addWidget(self.drop_area)
+        
+        # AI Analysis results
+        ai_group = QGroupBox("🤖 AI Analysis")
+        ai_layout = QVBoxLayout(ai_group)
+        
+        self.ai_info_text = QTextEdit()
+        self.ai_info_text.setMaximumHeight(200)
+        self.ai_info_text.setPlainText("Select an image to see AI analysis...")
+        ai_layout.addWidget(self.ai_info_text)
+        
+        right_layout.addWidget(ai_group)
+        
+        # Image metadata
+        meta_group = QGroupBox("📊 Image Details")
+        meta_layout = QVBoxLayout(meta_group)
+        
+        self.meta_info_text = QTextEdit()
+        self.meta_info_text.setMaximumHeight(200)
+        self.meta_info_text.setPlainText("No image selected...")
+        meta_layout.addWidget(self.meta_info_text)
+        
+        right_layout.addWidget(meta_group)
+        
+        # Cache statistics
+        cache_group = QGroupBox("💾 Performance")
+        cache_layout = QVBoxLayout(cache_group)
+        
+        self.cache_info_text = QTextEdit()
+        self.cache_info_text.setMaximumHeight(150)
+        self.update_cache_info()
+        cache_layout.addWidget(self.cache_info_text)
+        
+        right_layout.addWidget(cache_group)
+        
+        # Stretch
+        right_layout.addStretch()
+        
+        return right_widget
     
-
-        # Set the main widget as the central widget
-        self.setCentralWidget(main_widget)
-
-    def load_images_from_directory(self, directory):
-        """Load images from a directory and populate the grid."""
+    def setup_status_bar(self):
+        """Setup enhanced status bar"""
+        status_bar = self.statusBar()
+        
+        # Image count label
+        self.image_count_label = QLabel("Images: 0")
+        status_bar.addWidget(self.image_count_label)
+        
+        status_bar.addPermanentWidget(QLabel("|"))
+        
+        # AI status label
+        self.ai_status_label = QLabel("AI: Ready" if AI_FEATURES_AVAILABLE else "AI: Unavailable")
+        status_bar.addPermanentWidget(self.ai_status_label)
+        
+        status_bar.addPermanentWidget(QLabel("|"))
+        
+        # Cache status
+        self.cache_status_label = QLabel("Cache: OK")
+        status_bar.addPermanentWidget(self.cache_status_label)
+    
+    def connect_signals(self):
+        """Connect UI signals"""
+        self.import_btn.clicked.connect(self.open_import_dialog)
+        self.export_btn.clicked.connect(self.open_export_dialog)
+        self.ai_analyze_btn.clicked.connect(self.start_ai_analysis)
+        self.organize_btn.clicked.connect(self.auto_organize_images)
+    
+    def apply_modern_theme(self):
+        """Apply modern glassmorphism theme"""
+        if self.current_theme == "modern":
+            self.setStyleSheet(MODERN_STYLE)
+        else:
+            self.setStyleSheet(DARK_THEME_STYLE)
+    
+    def toggle_theme(self):
+        """Toggle between modern and dark themes"""
+        self.current_theme = "dark" if self.current_theme == "modern" else "modern"
+        self.apply_modern_theme()
+    
+    def load_images_from_directory(self, directory: str):
+        """Load images with enhanced caching and AI analysis"""
         self.image_dir = directory
+        self.clear_image_grid()
         
-        # Clear existing images
-        for i in reversed(range(self.grid_layout.count())):
-            widget = self.grid_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.setParent(None)
+        # Get image files
+        image_files = self.get_image_files(directory)
         
-        self.image_labels.clear()
+        if not image_files:
+            self.image_count_label.setText("Images: 0")
+            return
         
-        # Load all image files from the directory
-        row = 0
-        col = 0
-        image_count = 0
+        # Load images with caching
+        self.load_images_with_cache(image_files)
         
-        if os.path.exists(directory):
+        # Update UI
+        self.image_count_label.setText(f"Images: {len(image_files)}")
+        
+        # Auto-start AI analysis if enabled
+        if AI_FEATURES_AVAILABLE and len(image_files) < 100:  # Only auto-analyze small sets
+            QTimer.singleShot(1000, self.start_ai_analysis)
+    
+    def get_image_files(self, directory: str) -> List[str]:
+        """Get list of image files from directory"""
+        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+        image_files = []
+        
+        try:
             for file_name in os.listdir(directory):
-                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')):
-                    image_path = os.path.join(directory, file_name)
-                    try:
-                        image_label = ClickableLabel(self)
-                        pixmap = QPixmap(image_path)
-                        
-                        if not pixmap.isNull():
-                            crop_center = self.crop_center(pixmap)  # Crop the image to square
-                            image_label.setPixmap(crop_center)
-                            image_label.setScaledContents(True)
-                            image_label.setFixedSize(260, 260)  # Default size
-                            self.grid_layout.addWidget(image_label, row, col)
-                            self.image_labels.append((image_label, pixmap))  # Store label and pixmap
-                            image_label.installEventFilter(self)
-
-                            # Connect the clicked signal to a custom slot
-                            image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
-
-                            # Connect the doubleClicked signal to a custom slot
-                            image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
-
-                            # Update column and row for the next image
-                            col += 1
-                            image_count += 1
-                            if col == 3:  # Move to the next row after 3 columns
-                                col = 0
-                                row += 1
-                    except Exception as e:
-                        print(f"Error loading image {image_path}: {e}")
+                if os.path.splitext(file_name.lower())[1] in image_extensions:
+                    full_path = os.path.join(directory, file_name)
+                    if os.path.isfile(full_path):
+                        image_files.append(full_path)
+        except Exception as e:
+            self.logger.error(f"Error reading directory {directory}: {e}")
         
-        # Update the tool tips to show loaded image count
-        if image_count > 0 and self.tool_tips:
-            self.tool_tips.setText(f"Loaded {image_count} images from {os.path.basename(directory)}")
-        elif self.tool_tips:
-            self.tool_tips.setText("No images found in the selected directory")
-
-    def update_image_sizes(self, size):
-        """Update the size of the images and grid layout based on the selected size."""
-        if size == "Small":
-            new_size = 160  # Small size
-            max_columns = 5  # 5 columns
-        elif size == "Medium":
-            new_size = 260  # Medium size (default)
-            max_columns = 3  # 3 columns
-        elif size == "Large":
-            new_size = 400  # Large size
-            max_columns = 2  # 2 columns
-
-        # Clear the current grid layout
-        for i in reversed(range(self.grid_layout.count())):
-            widget = self.grid_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.setParent(None)
-
-        # Re-add images to the grid layout with the new size and grid configuration
-        row = 0
-        col = 0
-        for image_label, pixmap in self.image_labels:
-            cropped_pixmap = self.crop_center(pixmap)
-            scaled_pixmap = cropped_pixmap.scaled(new_size, new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            image_label.setPixmap(scaled_pixmap)
-            image_label.setFixedSize(new_size, new_size)
-
-            # Add the image label to the grid layout
-            self.grid_layout.addWidget(image_label, row, col)
-
-            # Update column and row for the next image
-            col += 1
-            if col == max_columns:  # Move to the next row after reaching max columns
-                col = 0
-                row += 1
-
-    def on_image_clicked(self, image_path):
-        """Handle the image click event with enhanced metadata and quality info."""
-        try:
-            # Get basic metadata
-            if hasattr(Get_MetaData, 'get_image_metadata'):
-                metadata = Get_MetaData.get_image_metadata(image_path)
-            else:
-                metadata = {
-                    "filename": os.path.basename(image_path),
-                    "size": os.path.getsize(image_path),
-                    "path": image_path
-                }
-            
-            # Check image quality
-            quality, score, dimensions = check_image_quality(image_path)
-            
-            if isinstance(metadata, dict) and "error" in metadata:
-                self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
-            else:
-                # Enhanced metadata display with quality information
-                info_text = f"File: {os.path.basename(image_path)}\n\n"
+        return sorted(image_files)
+    
+    def load_images_with_cache(self, image_files: List[str]):
+        """Load images using cache for performance"""
+        row, col = 0, 0
+        max_cols = 4
+        thumbnail_size = (220, 220)
+        
+        for image_path in image_files:
+            try:
+                # Try to get cached thumbnail
+                cached_pixmap = self.cache_manager.get_thumbnail(image_path, thumbnail_size)
                 
-                # Basic file info
-                try:
-                    file_size = os.path.getsize(image_path)
-                    info_text += f"Size: {file_size:,} bytes\n"
-                    info_text += f"Path: {image_path}\n\n"
-                except:
-                    pass
+                if cached_pixmap is None:
+                    # Create thumbnail
+                    pixmap = QPixmap(image_path)
+                    if not pixmap.isNull():
+                        # Crop to square and scale
+                        squared_pixmap = self.crop_center(pixmap)
+                        thumbnail = squared_pixmap.scaled(
+                            thumbnail_size[0], thumbnail_size[1], 
+                            Qt.KeepAspectRatio, Qt.SmoothTransformation
+                        )
+                        
+                        # Cache the thumbnail
+                        self.cache_manager.put_thumbnail(image_path, thumbnail_size, thumbnail)
+                        cached_pixmap = thumbnail
                 
-                # Quality analysis
-                info_text += "Quality Analysis:\n"
-                info_text += f"Quality: {quality.upper()}\n"
-                info_text += f"Score: {score:.2f}\n"
-                info_text += f"Dimensions: {dimensions[0]} x {dimensions[1]}\n\n"
-                
-                # Additional metadata if available
-                if isinstance(metadata, dict) and len(metadata) > 3:
-                    info_text += "Additional Metadata:\n"
-                    for key, value in list(metadata.items())[:5]:  # Show first 5 items
-                        info_text += f"{key}: {value}\n"
-                
-                self.img_info.setText(info_text)
-        except Exception as e:
-            self.img_info.setText(f"Error processing image:\n{str(e)}")
-
-    def on_image_double_clicked(self, image_path):
-        """Handle the image double-click event."""
-        try:
-            dialog = QDialog(self)
-            dialog.setWindowTitle("Image Viewer")
-            dialog.setModal(True)
-            
-            layout = QVBoxLayout(dialog)
-            
-            image_label = QLabel(dialog)
-            pixmap = QPixmap(image_path)
-            
-            if not pixmap.isNull():
-                # Scale the image to fit in a reasonable window size
-                max_size = 800
-                if pixmap.width() > max_size or pixmap.height() > max_size:
-                    pixmap = pixmap.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                
-                image_label.setPixmap(pixmap)
-                image_label.setAlignment(Qt.AlignCenter)
-            else:
-                image_label.setText("Could not load image")
-                image_label.setAlignment(Qt.AlignCenter)
-            
-            layout.addWidget(image_label)
-            
-            # Add close button
-            close_button = QPushButton("Close")
-            close_button.clicked.connect(dialog.accept)
-            layout.addWidget(close_button)
-            
-            dialog.setLayout(layout)
-            dialog.resize(pixmap.width() + 50, pixmap.height() + 100)
-            dialog.exec()
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Could not open image: {str(e)}")
-
-    def crop_center(self, pixmap):
-        """Crop the center of a QPixmap to create a square crop based on the smaller dimension."""
+                if cached_pixmap:
+                    # Create enhanced image widget
+                    image_widget = ModernImageLabel(image_path)
+                    image_widget.setPixmap(cached_pixmap)
+                    image_widget.setFixedSize(thumbnail_size[0], thumbnail_size[1])
+                    
+                    # Connect signals
+                    image_widget.clicked.connect(self.on_image_clicked)
+                    image_widget.right_clicked.connect(self.on_image_right_clicked)
+                    
+                    # Add to grid
+                    self.grid_layout.addWidget(image_widget, row, col)
+                    self.image_widgets.append((image_widget, image_path, {}))
+                    
+                    # Update grid position
+                    col += 1
+                    if col >= max_cols:
+                        col = 0
+                        row += 1
+                        
+            except Exception as e:
+                self.logger.error(f"Error loading image {image_path}: {e}")
+    
+    def crop_center(self, pixmap: QPixmap) -> QPixmap:
+        """Crop pixmap to center square"""
         if pixmap.isNull():
             return pixmap
-            
-        pixmap_width = pixmap.width()
-        pixmap_height = pixmap.height()
-        crop_size = min(pixmap_width, pixmap_height)
-        x = (pixmap_width - crop_size) // 2
-        y = (pixmap_height - crop_size) // 2
+        
+        width, height = pixmap.width(), pixmap.height()
+        crop_size = min(width, height)
+        x = (width - crop_size) // 2
+        y = (height - crop_size) // 2
+        
         return pixmap.copy(x, y, crop_size, crop_size)
-
-    def open_import_dialog(self):
-        """Open a file explorer to select a folder and return the folder path."""
-        folder_path = QFileDialog.getExistingDirectory(self, "Select Image Folder")
-        if folder_path:  # If a folder is selected
-            print(f"Selected folder: {folder_path}")
-            
-            # Load images from the selected folder
-            self.load_images_from_directory(folder_path)
-            
-            # Update tool tips to show folder loaded
-            if self.tool_tips:
-                self.tool_tips.setText(f"Loaded folder: {os.path.basename(folder_path)}")
-            
-            return folder_path
-        else:
-            print("No folder selected.")
-            return None
-
-    def open_export_dialog(self):
-        """Open the Export dialog with enhanced functionality."""
-        try:
-            # Check if output path is set
-            output_path = self.path_settings.get_output_path()
-            if not output_path:
-                reply = QMessageBox.question(
-                    self, 
-                    "No Output Path", 
-                    "No output path is set. Would you like to set one now?",
-                    QMessageBox.Yes | QMessageBox.No
-                )
-                if reply == QMessageBox.Yes:
-                    self.open_output_path_dialog()
-                    return
-                else:
-                    return
-                
-            dialog = export_dialog.ExportDialog(self, self.image_dir)
-            if dialog.exec():  # If the user clicks "OK"
-                export_path = dialog.get_output_path()
-                print(f"Images exported to: {export_path}")
-                # Update status in the UI
-                if self.tool_tips:
-                    self.tool_tips.setText(f"Export completed to: {os.path.basename(export_path)}")
-        except Exception as e:
-            QMessageBox.information(self, "Export", f"Export functionality: {str(e)}")
-
-    def open_change_tag_dialog(self):
-        """Open the Change Tag dialog."""
-        try:
-            dialog = change_tag_dialog.ChangeTagDialog(self)
-            if dialog.exec():  # If the user clicks "OK"
-                output_path = dialog.get_output_path()
-                if self.tool_tips:
-                    self.tool_tips.setText("Tag changes applied")
-        except Exception as e:
-            QMessageBox.information(self, "Change Tag", f"Change tag functionality: {str(e)}")
-
-    def open_output_path_dialog(self):
-        """Open the Output Path dialog with enhanced functionality."""
-        try:
-            dialog = output_dialog.OutputPathDialog(self)
-            if dialog.exec():  # If the user clicks "OK"
-                output_path = dialog.get_output_path()
-                print(f"Output path set to: {output_path}")
-                # Update any UI elements that show the output path
-                if self.tool_tips:
-                    self.tool_tips.setText(f"Output path: {os.path.basename(output_path)}")
-        except Exception as e:
-            # Fallback - simple path selection
-            folder_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
-            if folder_path:
-                self.path_settings.set_output_path(folder_path)
-                if self.tool_tips:
-                    self.tool_tips.setText(f"Output path: {os.path.basename(folder_path)}")
-
-    def get_selected_tag(self):
-        """Get the currently selected tag from radio buttons."""
-        button = self.button_group.checkedButton()
-        if button:
-            return button.text().replace('\n', '_')  # Handle multi-line button text
-        return "Unknown"  # Default if no tag is selected
-
-    def process_images_with_quality_check(self, image_files, output_path):
-        """
-        Process images, check their quality, and move them to appropriate folders.
-        
-        Args:
-            image_files (list): List of image file paths
-            output_path (str): Base output path for sorted images
-        """
-        # Get selected tag
-        tag = self.get_selected_tag()
-        
-        # Track stats
-        processed = 0
-        high_quality = 0
-        low_quality = 0
-        errors = 0
-        
-        # Process each image
-        for img_path in image_files:
-            try:
-                # Check image quality
-                quality, score, dimensions = check_image_quality(img_path)
-                
-                if quality == "error":
-                    errors += 1
-                    continue
-                    
-                # Determine target folder based on tag and quality
-                if tag == "Unknown":
-                    # If tag is unknown, use quality as the determining factor
-                    if quality == "high":
-                        target_folder = os.path.join(output_path, "High_Quality")
-                        high_quality += 1
-                    else:
-                        target_folder = os.path.join(output_path, "Low_Quality")
-                        low_quality += 1
-                else:
-                    # If tag is known, use both tag and quality
-                    if quality == "high":
-                        target_folder = os.path.join(output_path, tag, "High_Quality")
-                        high_quality += 1
-                    else:
-                        target_folder = os.path.join(output_path, tag, "Low_Quality")
-                        low_quality += 1
-                
-                # Create target folder if it doesn't exist
-                os.makedirs(target_folder, exist_ok=True)
-                
-                # Copy the image to the target folder
-                filename = os.path.basename(img_path)
-                target_path = os.path.join(target_folder, filename)
-                
-                try:
-                    # Copy the file (use shutil.move to move instead)
-                    shutil.copy2(img_path, target_path)
-                    processed += 1
-                except Exception as e:
-                    print(f"Error processing {img_path}: {e}")
-                    errors += 1
-            except Exception as e:
-                print(f"Error processing {img_path}: {e}")
-                errors += 1
-        
-        # Show results
-        QMessageBox.information(
-            self,
-            "Processing Complete",
-            f"Processed: {processed} images\n"
-            f"High quality: {high_quality}\n"
-            f"Low quality: {low_quality}\n"
-            f"Errors: {errors}"
-        )
-
-    def refresh_image_grid(self):
-        """Refresh the image grid after changes."""
-        self.load_images_from_directory(self.image_dir)
-
-    def eventFilter(self, obj, event):
-        """Enhanced event filter with updated tool tips."""
-        try:
-            # Check if tool_tips exists before using it
-            if not hasattr(self, 'tool_tips') or self.tool_tips is None:
-                return super().eventFilter(obj, event)
-                
-            if event.type() == QEvent.Enter:
-                if hasattr(self, 'import_bnt') and obj == self.import_bnt:
-                    self.tool_tips.setText("Import images from a folder - supports drag and drop")
-                elif hasattr(self, 'export_bnt') and obj == self.export_bnt:
-                    self.tool_tips.setText("Export sorted images to category folders with quality filtering")
-                elif hasattr(self, 'checkDup_bnt') and obj == self.checkDup_bnt:
-                    self.tool_tips.setText("Check for duplicate images and remove them")
-                elif hasattr(self, 'changeTag_bnt') and obj == self.changeTag_bnt:
-                    self.tool_tips.setText("Change tags for selected images")
-                elif hasattr(self, 'outputPath_bnt') and obj == self.outputPath_bnt:
-                    try:
-                        current_path = self.path_settings.get_output_path()
-                        if current_path:
-                            self.tool_tips.setText(f"Current output: {os.path.basename(current_path)} - Click to change")
-                        else:
-                            self.tool_tips.setText("Set the output path for sorted images")
-                    except:
-                        self.tool_tips.setText("Set the output path for sorted images")
-                elif hasattr(self, 'small_size_btn') and obj == self.small_size_btn:
-                    self.tool_tips.setText("Display images in small size (5x5 grid)")
-                elif hasattr(self, 'medium_size_btn') and obj == self.medium_size_btn:
-                    self.tool_tips.setText("Display images in medium size (3x3 grid)")
-                elif hasattr(self, 'large_size_btn') and obj == self.large_size_btn:
-                    self.tool_tips.setText("Display images in large size (2x2 grid)")
-                elif isinstance(obj, QRadioButton):
-                    self.tool_tips.setText(f"Filter images by {obj.text()} category")
-                elif hasattr(self, 'image_labels') and any(obj == label for label, _ in self.image_labels):
-                    self.tool_tips.setText("Click for metadata and quality info, double-click to view larger")
-                elif isinstance(obj, DragDropArea):
-                    self.tool_tips.setText("Drag and drop a folder here to import images")
-            elif event.type() == QEvent.Leave:
-                self.tool_tips.setText("Tool Tips")
-        except Exception as e:
-            print(f"Event filter error: {e}")
-            
-        return super().eventFilter(obj, event)
     
-    def show_duplicates_dialog(self):
-        """Launch a dialog to show and delete detected duplicate images."""
+    def clear_image_grid(self):
+        """Clear the image grid"""
+        for widget, _, _ in self.image_widgets:
+            widget.setParent(None)
+        
+        self.image_widgets.clear()
+        self.analysis_results.clear()
+    
+    def start_ai_analysis(self):
+        """Start AI analysis of all visible images"""
+        if not AI_FEATURES_AVAILABLE:
+            QMessageBox.information(self, "AI Unavailable", "AI features are not available. Please install required dependencies.")
+            return
+        
+        if not self.image_widgets:
+            QMessageBox.information(self, "No Images", "No images to analyze.")
+            return
+        
+        # Get image paths
+        image_paths = [path for _, path, _ in self.image_widgets]
+        
+        # Setup progress
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setMaximum(len(image_paths))
+        self.progress_bar.setValue(0)
+        self.ai_status_label.setText("AI: Analyzing...")
+        
+        # Start worker thread
+        self.analysis_worker = ImageAnalysisWorker(image_paths)
+        self.analysis_worker.analysis_complete.connect(self.on_analysis_complete)
+        self.analysis_worker.progress_updated.connect(self.on_analysis_progress)
+        self.analysis_worker.finished.connect(self.on_analysis_finished)
+        self.analysis_worker.start()
+    
+    def on_analysis_complete(self, image_path: str, analysis: Dict):
+        """Handle completed AI analysis for single image"""
+        self.analysis_results[image_path] = analysis
+        
+        # Update image widget with AI info
+        for widget, path, _ in self.image_widgets:
+            if path == image_path:
+                widget.set_ai_info(analysis)
+                break
+    
+    def on_analysis_progress(self, current: int, total: int, filename: str):
+        """Update progress bar"""
+        self.progress_bar.setValue(current)
+        self.ai_status_label.setText(f"AI: Analyzing {filename} ({current}/{total})")
+    
+    def on_analysis_finished(self):
+        """AI analysis completed"""
+        self.progress_bar.setVisible(False)
+        self.ai_status_label.setText(f"AI: Complete ({len(self.analysis_results)} analyzed)")
+        
+        # Show summary
+        categories = {}
+        qualities = {}
+        
+        for analysis in self.analysis_results.values():
+            cat = analysis.get('ai_category', 'Unknown')
+            qual = analysis.get('quality', 'unknown')
+            
+            categories[cat] = categories.get(cat, 0) + 1
+            qualities[qual] = qualities.get(qual, 0) + 1
+        
+        summary = f"Analysis Complete!\n\nCategories found:\n"
+        for cat, count in sorted(categories.items()):
+            summary += f"  {cat}: {count}\n"
+        
+        summary += f"\nQuality distribution:\n"
+        for qual, count in sorted(qualities.items()):
+            summary += f"  {qual.title()}: {count}\n"
+        
+        QMessageBox.information(self, "AI Analysis Complete", summary)
+    
+    def on_image_clicked(self, image_path: str):
+        """Handle image click - show detailed info"""
+        # Update metadata display
+        self.show_image_details(image_path)
+        
+        # Update AI info if available
+        if image_path in self.analysis_results:
+            analysis = self.analysis_results[image_path]
+            ai_text = f"Category: {analysis.get('ai_category', 'Unknown')}\n"
+            ai_text += f"Confidence: {analysis.get('ai_confidence', 0.0):.2f}\n"
+            ai_text += f"Quality: {analysis.get('quality', 'Unknown')} (Score: {analysis.get('score', 0):.1f})\n"
+            ai_text += f"Faces detected: {analysis.get('faces', 0)}\n"
+            ai_text += f"Aesthetic score: {analysis.get('aesthetic_score', 0.5):.2f}\n"
+            
+            if analysis.get('tags'):
+                ai_text += f"Tags: {', '.join(analysis['tags'][:5])}\n"
+            
+            self.ai_info_text.setPlainText(ai_text)
+        else:
+            self.ai_info_text.setPlainText("No AI analysis available for this image.\nClick 'AI Analyze' to analyze all images.")
+    
+    def on_image_right_clicked(self, image_path: str):
+        """Handle right-click on image - show context menu"""
+        # Could implement context menu here
+        pass
+    
+    def show_image_details(self, image_path: str):
+        """Show detailed image information"""
         try:
-            folder = self.image_dir
+            stat = os.stat(image_path)
+            pixmap = QPixmap(image_path)
             
-            # Get all files in the directory
-            try:
-                all_files = get_all_files_in_directory.get_all_files_in_directory(folder)
-            except:
-                all_files = [os.path.join(folder, f) for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
+            details = f"File: {os.path.basename(image_path)}\n"
+            details += f"Path: {image_path}\n"
+            details += f"Size: {stat.st_size / 1024 / 1024:.2f} MB\n"
+            details += f"Dimensions: {pixmap.width()} x {pixmap.height()}\n"
+            details += f"Modified: {datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}\n"
             
-            image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
-            
-            if not image_files:
-                QMessageBox.information(self, "No Images", "No image files found in the current directory.")
-                return
-            
-            # Simple duplicate detection based on file size (fallback method)
-            duplicates = {}
-            size_map = {}
-            
-            for img_path in image_files:
-                try:
-                    file_size = os.path.getsize(img_path)
-                    if file_size in size_map:
-                        # Potential duplicate found
-                        original = size_map[file_size]
-                        if original not in duplicates:
-                            duplicates[original] = []
-                        duplicates[original].append(img_path)
-                    else:
-                        size_map[file_size] = img_path
-                except:
-                    continue
-            
-            if not duplicates:
-                QMessageBox.information(self, "No Duplicates Found", "No duplicate images were found based on file size.")
-                return
-                
-            dialog = QDialog(self)
-            dialog.setWindowTitle("Review and Delete Duplicates")
-            dialog.resize(600, 400)
-            layout = QVBoxLayout(dialog)
-            
-            layout.addWidget(QLabel(f"Found {len(duplicates)} sets of potential duplicates:"))
-            
-            self.dup_checkboxes = []
-            for original, dup_list in duplicates.items():
-                layout.addWidget(QLabel(f"Original: {os.path.basename(original)}"))
-                for dup in dup_list:
-                    checkbox = QCheckBox(f"Delete Duplicate: {os.path.basename(dup)}")
-                    checkbox.setProperty("file_path", dup)
-                    self.dup_checkboxes.append(checkbox)
-                    layout.addWidget(checkbox)
-                layout.addWidget(QLabel(""))  # Add spacing
-            
-            button_layout = QHBoxLayout()
-            delete_btn = QPushButton("Delete Selected")
-            delete_btn.clicked.connect(lambda: self.delete_selected_duplicates(dialog))
-            cancel_btn = QPushButton("Cancel")
-            cancel_btn.clicked.connect(dialog.reject)
-            
-            button_layout.addWidget(cancel_btn)
-            button_layout.addWidget(delete_btn)
-            layout.addLayout(button_layout)
-            
-            dialog.setLayout(layout)
-            dialog.exec()
+            self.meta_info_text.setPlainText(details)
             
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Error checking for duplicates: {str(e)}")
-
-    def delete_selected_duplicates(self, dialog):
-        """Delete files selected in the duplicate review dialog."""
-        deleted_count = 0
-        error_count = 0
+            self.meta_info_text.setPlainText(f"Error reading file details: {e}")
+    
+    def update_cache_info(self):
+        """Update cache information display"""
+        try:
+            stats = self.cache_manager.get_comprehensive_stats()
+            
+            cache_text = f"Memory Cache: {stats.get('memory_cache', {}).get('items', 0)} items\n"
+            cache_text += f"Thumbnail Cache: {stats.get('thumbnail_cache', {}).get('items', 0)} items\n"
+            cache_text += f"Total Size: {stats.get('total_cache_size_mb', 0):.1f} MB\n"
+            cache_text += f"Hit Rate: {stats.get('memory_cache', {}).get('hit_rate', 0):.1f}%\n"
+            
+            self.cache_info_text.setPlainText(cache_text)
+            
+        except Exception as e:
+            self.cache_info_text.setPlainText(f"Cache info unavailable: {e}")
+    
+    def filter_by_category(self, category: str):
+        """Filter images by AI-detected category"""
+        self.current_filter['category'] = category
+        self.apply_current_filters()
+    
+    def filter_by_quality(self, quality: str):
+        """Filter images by quality level"""
+        self.current_filter['quality'] = quality
+        self.apply_current_filters()
+    
+    def apply_current_filters(self):
+        """Apply current filters to image display"""
+        category_filter = self.current_filter.get('category', 'All')
+        quality_filter = self.current_filter.get('quality', 'All')
         
-        for cb in self.dup_checkboxes:
-            if cb.isChecked():
-                path = cb.property("file_path")
-                try:
-                    os.remove(path)
-                    deleted_count += 1
-                    print(f"Deleted: {path}")
-                except Exception as e:
-                    error_count += 1
-                    print(f"Failed to delete {path}: {e}")
+        visible_count = 0
         
-        if deleted_count > 0:
-            QMessageBox.information(self, "Deletion Complete", 
-                                   f"Deleted {deleted_count} duplicate files.\n"
-                                   f"Errors: {error_count}")
-            self.refresh_image_grid()
-        else:
-            QMessageBox.information(self, "No Action", "No files were selected for deletion.")
+        for widget, image_path, _ in self.image_widgets:
+            show_widget = True
+            
+            # Apply category filter
+            if category_filter != 'All':
+                analysis = self.analysis_results.get(image_path, {})
+                image_category = analysis.get('ai_category', 'Unknown')
+                if image_category.lower() != category_filter.lower():
+                    show_widget = False
+            
+            # Apply quality filter
+            if quality_filter != 'All':
+                analysis = self.analysis_results.get(image_path, {})
+                image_quality = analysis.get('quality', 'unknown')
+                if image_quality.lower() != quality_filter.lower():
+                    show_widget = False
+            
+            # Show/hide widget
+            widget.setVisible(show_widget)
+            if show_widget:
+                visible_count += 1
         
-        dialog.accept()
+        # Update status
+        self.image_count_label.setText(f"Images: {visible_count} (filtered)")
+    
+    def perform_smart_search(self, query: str, filters: Dict):
+        """Perform AI-powered smart search"""
+        if not query.strip():
+            # Clear filters if no query
+            self.current_filter = {}
+            self.apply_current_filters()
+            return
+        
+        # Simple keyword matching for now
+        # In a full implementation, this would use AI to understand natural language
+        query_lower = query.lower()
+        visible_count = 0
+        
+        for widget, image_path, _ in self.image_widgets:
+            show_widget = False
+            
+            # Check filename
+            if query_lower in os.path.basename(image_path).lower():
+                show_widget = True
+            
+            # Check AI analysis results
+            analysis = self.analysis_results.get(image_path, {})
+            if analysis:
+                # Check category
+                if query_lower in analysis.get('ai_category', '').lower():
+                    show_widget = True
+                
+                # Check tags
+                tags = analysis.get('tags', [])
+                if any(query_lower in tag.lower() for tag in tags):
+                    show_widget = True
+            
+            widget.setVisible(show_widget)
+            if show_widget:
+                visible_count += 1
+        
+        self.image_count_label.setText(f"Images: {visible_count} (search: '{query}')")
+    
+    def update_image_sizes(self, size: int):
+        """Update image display size"""
+        for widget, _, _ in self.image_widgets:
+            widget.setFixedSize(size, size)
+    
+    def handle_dropped_files(self, file_paths: List[str]):
+        """Handle dropped files/folders"""
+        for path in file_paths:
+            if os.path.isdir(path):
+                self.load_images_from_directory(path)
+                break
+    
+    # Dialog methods (simplified versions)
+    def open_import_dialog(self):
+        """Open import dialog"""
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Image Folder")
+        if folder_path:
+            self.load_images_from_directory(folder_path)
+    
+    def open_export_dialog(self):
+        """Open export dialog"""
+        if not self.analysis_results:
+            QMessageBox.information(self, "No Analysis", "Please run AI analysis first to enable smart export.")
+            return
+        
+        # Simplified export - in real implementation would use enhanced export widget
+        QMessageBox.information(self, "Export", "Enhanced export functionality will be available in the full version.")
+    
+    def auto_organize_images(self):
+        """Auto-organize images based on AI analysis"""
+        if not self.analysis_results:
+            QMessageBox.information(self, "No Analysis", "Please run AI analysis first.")
+            return
+        
+        # Show preview of organization
+        categories = {}
+        for path, analysis in self.analysis_results.items():
+            cat = analysis.get('ai_category', 'Unknown')
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(os.path.basename(path))
+        
+        preview = "Auto-organization preview:\n\n"
+        for cat, files in categories.items():
+            preview += f"{cat} ({len(files)} files):\n"
+            for file in files[:3]:  # Show first 3
+                preview += f"  • {file}\n"
+            if len(files) > 3:
+                preview += f"  • ... and {len(files) - 3} more\n"
+            preview += "\n"
+        
+        QMessageBox.information(self, "Auto-Organization Preview", preview)
+    
+    def open_settings(self):
+        """Open settings dialog"""
+        QMessageBox.information(self, "Settings", "Settings dialog will be implemented in the full version.")
+    
+    def clear_ai_cache(self):
+        """Clear AI analysis cache"""
+        self.cache_manager.clear_all_caches()
+        self.update_cache_info()
+        QMessageBox.information(self, "Cache Cleared", "AI analysis cache has been cleared.")
+    
+    def show_cache_stats(self):
+        """Show detailed cache statistics"""
+        stats = self.cache_manager.get_comprehensive_stats()
+        
+        stats_text = "Cache Statistics:\n\n"
+        stats_text += f"Memory Cache: {stats.get('memory_cache', {}).get('items', 0)} items, "
+        stats_text += f"{stats.get('memory_cache', {}).get('size_mb', 0):.1f} MB\n"
+        stats_text += f"Thumbnail Cache: {stats.get('thumbnail_cache', {}).get('items', 0)} items, "
+        stats_text += f"{stats.get('thumbnail_cache', {}).get('size_mb', 0):.1f} MB\n"
+        stats_text += f"AI Cache: {stats.get('ai_analysis_cache', {}).get('items', 0)} items, "
+        stats_text += f"{stats.get('ai_analysis_cache', {}).get('size_mb', 0):.1f} MB\n"
+        stats_text += f"\nTotal Cache Size: {stats.get('total_cache_size_mb', 0):.1f} MB\n"
+        stats_text += f"Cache Directory: {stats.get('cache_directory', 'Unknown')}\n"
+        
+        QMessageBox.information(self, "Cache Statistics", stats_text)
+    
+    def setup_ai_features(self):
+        """Setup AI-specific features"""
+        # Timer to periodically update cache info
+        self.cache_timer = QTimer()
+        self.cache_timer.timeout.connect(self.update_cache_info)
+        self.cache_timer.start(5000)  # Update every 5 seconds
 
-    def set_mode(self, mode):
-        """Set the application stylesheet based on mode."""
-        if mode == "dark":
-            self.setStyleSheet(DARK_STYLESHEET)
-            self.mode_toggle_btn.setText("Switch to Light Mode")
-            self.mode_toggle_btn.setChecked(True)
-        else:
-            self.setStyleSheet(LIGHT_STYLESHEET)
-            self.mode_toggle_btn.setText("Switch to Dark Mode")
-            self.mode_toggle_btn.setChecked(False)
-
-    def toggle_mode(self):
-        """Toggle between dark and light mode."""
-        if self.mode_toggle_btn.isChecked():
-            self.set_mode("dark")
-        else:
-            self.set_mode("light")
-
-
-# Main execution block for testing
+# Main execution
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    
+    # Set application properties
+    app.setApplicationName("Album Vision+ Pro")
+    app.setApplicationVersion("2.0")
+    app.setOrganizationName("AlbumVision")
     
     # Default test directory
     test_dir = os.path.join(os.getcwd(), "data", "test_images")
     if not os.path.exists(test_dir):
         os.makedirs(test_dir, exist_ok=True)
         print(f"Created test directory: {test_dir}")
-        print("Add some image files to this directory to test the application.")
-    
-    # Set application properties
-    app.setApplicationName("Album Vision+")
-    app.setApplicationVersion("1.0")
-    app.setOrganizationName("AlbumVision")
     
     try:
-        window = ImageWindow(test_dir)
+        window = EnhancedImageWindow(test_dir)
         window.show()
         
-        print("AlbumVision+ started successfully!")
+        print("Album Vision+ Pro started successfully!")
+        print(f"AI Features: {'Available' if AI_FEATURES_AVAILABLE else 'Unavailable'}")
         print(f"Test directory: {test_dir}")
-        print("You can drag and drop folders containing images to import them.")
         
         sys.exit(app.exec())
+        
     except Exception as e:
         print(f"Error starting application: {e}")
         import traceback
         traceback.print_exc()
-        QMessageBox.critical(None, "Startup Error", f"Failed to start AlbumVision+:\n{str(e)}")
+        QMessageBox.critical(None, "Startup Error", f"Failed to start Album Vision+ Pro:\n{str(e)}")
         sys.exit(1)
