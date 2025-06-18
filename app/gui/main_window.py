@@ -5,8 +5,11 @@ import shutil
 from functools import partial
 
 # Add the project root to Python path
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
+
+from app.utils.Auto_Sort_Basic import model
+from app.utils.file_utils import map_coco_label_to_custom_tag
 
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
@@ -332,6 +335,8 @@ class ImageWindow(QMainWindow):
             self.button_group.addButton(button)  # Add the button to the group
             tab_btn_layout.addWidget(button)
             button.installEventFilter(self)  # Install event filter for the button
+        
+        self.button_group.buttonClicked.connect(self.handle_tag_button_click)    
 
         # Set the layout for the group box
         tag_btn_group_box.setLayout(tab_btn_layout)
@@ -458,6 +463,10 @@ class ImageWindow(QMainWindow):
 
         # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
+    
+    def handle_tag_button_click(self, button):
+        tag = button.text().strip().lower().replace("\n", " ")  # Normalize the tag name
+        self.filter_images_by_tag(tag)    
         
     def toggle_selection_mode(self):
         """Enable or disable selection mode for deleting images."""
@@ -525,11 +534,18 @@ class ImageWindow(QMainWindow):
                             image_label.setScaledContents(True)
                             image_label.setFixedSize(260, 260)
                             layout.addWidget(image_label)
-                            self.image_labels.append((image_label, pixmap, image_path))
 
                             image_label.installEventFilter(self)
                             image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
                             image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
+
+                            # Get custom tag using the model
+                            try:
+                                results = model(image_path, verbose=False)
+                                coco_tags = set(model.names[int(box.cls[0])] for box in results[0].boxes)
+                                tag = map_coco_label_to_custom_tag(list(coco_tags)[0]) if coco_tags else "Unknown"
+                            except:
+                                tag = "Unknown"
 
                             # --- Add checkbox if selection mode is active ---
                             if self.selection_mode:
@@ -542,10 +558,10 @@ class ImageWindow(QMainWindow):
                                     checkbox.setChecked(True)
 
                                 layout.addWidget(checkbox)
-                                self.image_labels.append((image_label, pixmap, image_path, checkbox))  # ADD checkbox
+                                self.image_labels.append((image_label, pixmap, image_path, checkbox, tag))
                             else:
-                                self.image_labels.append((image_label, pixmap, image_path, None))
                                 layout.addSpacing(20)
+                                self.image_labels.append((image_label, pixmap, image_path, None, tag))
 
                             self.grid_layout.addWidget(image_widget, row, col)
                             col += 1
@@ -635,7 +651,7 @@ class ImageWindow(QMainWindow):
                 row += 1
 
     def on_image_clicked(self, image_path):
-        """Handle the image click event with enhanced metadata and quality info."""
+        """Handle the image click event with enhanced metadata, quality info, and simplified tags."""
         try:
             # Get basic metadata
             if hasattr(Get_MetaData, 'get_image_metadata'):
@@ -649,7 +665,64 @@ class ImageWindow(QMainWindow):
             
             # Check image quality
             quality, score, dimensions = check_image_quality(image_path)
-            
+
+            # --- NEW PART: Run YOLOv8 and map to custom tags ---
+            try:
+                from ultralytics import YOLO
+                model = YOLO("yolov8n.pt")
+
+                def map_coco_label_to_custom_tag(label):
+                    mapping = {
+                        "person": "person",
+                        "cat": "cat",
+                        "dog": "dog",
+                        "car": "vehicle",
+                        "bus": "vehicle",
+                        "truck": "vehicle",
+                        "bicycle": "vehicle",
+                        "motorcycle": "vehicle",
+                        "airplane": "vehicle",
+                        "train": "vehicle",
+                        "knife": "kitchenware",
+                        "fork": "kitchenware",
+                        "spoon": "kitchenware",
+                        "bowl": "kitchenware",
+                        "refrigerator": "appliance",
+                        "microwave": "appliance",
+                        "oven": "appliance",
+                        "toaster": "appliance",
+                        "tv": "entertainment device",
+                        "laptop": "entertainment device",
+                        "cell phone": "entertainment device",
+                        "mouse": "entertainment device",
+                        "keyboard": "entertainment device",
+                        "remote": "entertainment device",
+                        "bear": "animal",
+                        "zebra": "animal",
+                        "elephant": "animal",
+                        "sheep": "animal",
+                        "cow": "animal",
+                        "horse": "animal",
+                        "bird": "animal",
+                        "giraffe": "animal"
+                    }
+                    return mapping.get(label.lower(), "unknown")
+
+                results = model(image_path, verbose=False)
+                tags_detected = set()
+
+                for box in results[0].boxes:
+                    cls_id = int(box.cls[0])
+                    coco_label = model.names[cls_id]
+                    custom_tag = map_coco_label_to_custom_tag(coco_label)
+                    tags_detected.add(custom_tag)
+
+            except Exception as model_error:
+                tags_detected = {"unknown"}
+                print(f"YOLO model error: {model_error}")
+
+            # -------------------------------------------------
+
             if isinstance(metadata, dict) and "error" in metadata:
                 self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
             else:
@@ -669,6 +742,9 @@ class ImageWindow(QMainWindow):
                 info_text += f"Quality: {quality.upper()}\n"
                 info_text += f"Score: {score:.2f}\n"
                 info_text += f"Dimensions: {dimensions[0]} x {dimensions[1]}\n\n"
+
+                # Display simplified tags
+                info_text += f"Detected Tags: {', '.join(tags_detected)}\n\n"
                 
                 # Additional metadata if available
                 if isinstance(metadata, dict):
@@ -1037,4 +1113,90 @@ class ImageWindow(QMainWindow):
         else:
             QMessageBox.information(self, "No Action", "No files were selected for deletion.")
 
-        dialog.accept()            
+        dialog.accept()   
+        
+                 
+    def map_coco_label_to_custom_tag(label):
+        mapping = {
+            "person": "person",
+            "cat": "cat",
+            "dog": "dog",
+            "car": "vehicle",
+            "bus": "vehicle",
+            "truck": "vehicle",
+            "bicycle": "vehicle",
+            "motorcycle": "vehicle",
+            "airplane": "vehicle",
+            "train": "vehicle",
+            "knife": "kitchenware",
+            "fork": "kitchenware",
+            "spoon": "kitchenware",
+            "bowl": "kitchenware",
+            "refrigerator": "appliance",
+            "microwave": "appliance",
+            "oven": "appliance",
+            "toaster": "appliance",
+            "tv": "entertainment device",
+            "laptop": "entertainment device",
+            "cell phone": "entertainment device",
+            "mouse": "entertainment device",
+            "keyboard": "entertainment device",
+            "remote": "entertainment device",
+            "bear": "animal",
+            "zebra": "animal",
+            "elephant": "animal",
+            "sheep": "animal",
+            "cow": "animal",
+            "horse": "animal",
+            "bird": "animal",
+            "giraffe": "animal",
+            "dog": "dog",
+            "cat": "cat"
+        }
+        return mapping.get(label.lower(), "unknown")    
+    
+    
+    def filter_images_by_tag(self, target_tag):
+        """Filter and display images that match the selected custom tag."""
+        # Clear current grid
+        for i in reversed(range(self.grid_layout.count())):
+            widget = self.grid_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.setParent(None)
+
+        row = 0
+        col = 0
+        match_count = 0
+
+        for image_data in self.image_labels:
+            # image_data format: (label, pixmap, path, checkbox, tag)
+            if len(image_data) < 5:
+                continue  # Skip malformed entries
+
+            image_label, pixmap, image_path, checkbox, tag = image_data
+            if tag == target_tag:
+                try:
+                    image_widget = QWidget()
+                    layout = QVBoxLayout(image_widget)
+                    layout.setAlignment(Qt.AlignCenter)
+
+                    image_label = ClickableLabel(self)
+                    image_label.setPixmap(pixmap)
+                    image_label.setScaledContents(True)
+                    image_label.setFixedSize(260, 260)
+                    layout.addWidget(image_label)
+
+                    image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
+                    image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
+
+                    self.grid_layout.addWidget(image_widget, row, col)
+                    col += 1
+                    match_count += 1
+                    if col == 3:
+                        col = 0
+                        row += 1
+                except Exception as e:
+                    print(f"Error displaying filtered image {image_path}: {e}")
+
+        if self.tool_tips:
+            self.tool_tips.setText(f"Filtered to {match_count} images under tag: {target_tag}")

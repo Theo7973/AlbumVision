@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 from ultralytics import YOLO
-from file_utils import map_coco_label_to_custom_tag
+from app.utils.file_utils import map_coco_label_to_custom_tag
 
 def map_coco_label_to_custom_tag(label):
     mapping = {
