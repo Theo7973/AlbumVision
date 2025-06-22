@@ -9,6 +9,47 @@ import cv2
 import numpy as np
 import logging
 
+COCO_TO_CUSTOM_TAG = {
+    "fork": "Kitchenware",
+    "spoon": "Kitchenware",
+    "knife": "Kitchenware",
+    "cup": "Kitchenware",
+    "bowl": "Kitchenware",
+    "wine glass": "Kitchenware",
+    "dining table": "Kitchenware",
+    "toaster": "Kitchenware",
+    "microwave": "Kitchenware",
+    "oven": "Kitchenware",
+    "refrigerator": "Appliance",
+    "tv": "Entertainment Device",
+    "cell phone": "Appliance",
+    "remote": "Entertainment Device",
+    "laptop": "Appliance",
+    "keyboard": "Appliance",
+    "car": "Vehicle",
+    "truck": "Vehicle",
+    "bus": "Vehicle",
+    "bicycle": "Vehicle",
+    "motorcycle": "Vehicle",
+    "train": "Vehicle",
+    "airplane": "Vehicle",
+    "boat": "Vehicle",
+    "bird": "Animal",
+    "horse": "Animal",
+    "sheep": "Animal",
+    "cow": "Animal",
+    "elephant": "Animal",
+    "bear": "Animal",
+    "zebra": "Animal",
+    "giraffe": "Animal",
+    "cat": "Cat",
+    "dog": "Dog",
+    "person": "Person",
+}
+
+def map_coco_label_to_custom_tag(label):
+    """Map a raw COCO label to a custom tag group."""
+    return COCO_TO_CUSTOM_TAG.get(label.lower(), "Unknown")
 
 def filter_non_image_files(file_list):
     """
@@ -92,6 +133,28 @@ def find_duplicate_images(input_image_path, folder_path):
             duplicates.append(file_path)
 
     return duplicates
+
+
+def map_coco_label_to_custom_tag(coco_label: str) -> str:
+    """Maps a COCO label to one of the 9 predefined categories."""
+    label = coco_label.lower()
+
+    mapping = {
+        'animal': ['bear', 'bird', 'zebra', 'giraffe', 'elephant', 'sheep', 'cow', 'horse'],
+        'cat': ['cat'],
+        'dog': ['dog'],
+        'person': ['person'],
+        'vehicle': ['bicycle', 'car', 'motorcycle', 'bus', 'train', 'truck', 'boat'],
+        'kitchenware': ['fork', 'knife', 'spoon', 'bowl', 'cup', 'wine glass'],
+        'appliance': ['microwave', 'oven', 'refrigerator', 'toaster', 'sink'],
+        'entertainment device': ['tv', 'laptop', 'cell phone', 'remote', 'keyboard'],
+    }
+
+    for category, keywords in mapping.items():
+        if label in keywords:
+            return category
+
+    return 'unknown'
 
 # Only for testing purposes
 # if __name__ == "__main__":
