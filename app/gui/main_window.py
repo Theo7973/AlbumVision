@@ -630,7 +630,7 @@ class ImageWindow(QMainWindow):
         # Re-add images to the grid layout with the new size and grid configuration
         row = 0
         col = 0
-        for image_label, pixmap, image_path, checkbox in self.image_labels:
+        for image_label, pixmap, image_path, checkbox, tag in self.image_labels:
             cropped_pixmap = self.crop_center(pixmap)
             scaled_pixmap = cropped_pixmap.scaled(new_size, new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             image_label.setPixmap(scaled_pixmap)
