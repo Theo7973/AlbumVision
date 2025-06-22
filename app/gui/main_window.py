@@ -251,6 +251,7 @@ class ImageWindow(QMainWindow):
         self.button_group = QButtonGroup(self)
         self.selection_mode = False
         self.selected_images = []
+        self.TAG = "cat"
         
 
         # Set the window icon
@@ -335,6 +336,8 @@ class ImageWindow(QMainWindow):
             self.button_group.addButton(button)  # Add the button to the group
             tab_btn_layout.addWidget(button)
             button.installEventFilter(self)  # Install event filter for the button
+            if name.lower() == self.TAG.lower():
+                button.setChecked(True)  # Set the default tag button to be checked
         
         self.button_group.buttonClicked.connect(self.handle_tag_button_click)    
 
@@ -378,9 +381,9 @@ class ImageWindow(QMainWindow):
         self.medium_size_btn.setChecked(True)
 
         # Connect the radio buttons to the update_image_sizes function
-        self.small_size_btn.toggled.connect(lambda: self.update_image_sizes("Small"))
-        self.medium_size_btn.toggled.connect(lambda: self.update_image_sizes("Medium"))
-        self.large_size_btn.toggled.connect(lambda: self.update_image_sizes("Large"))
+        self.small_size_btn.toggled.connect(lambda: self.update_image_sizes("Small", self.TAG))
+        self.medium_size_btn.toggled.connect(lambda: self.update_image_sizes("Medium", self.TAG))
+        self.large_size_btn.toggled.connect(lambda: self.update_image_sizes("Large", self.TAG))
 
         # Add the radio buttons to the layout
         size_layout.addWidget(self.small_size_btn)
@@ -416,13 +419,10 @@ class ImageWindow(QMainWindow):
         drag_drop_area = DragDropArea(self)
         drag_drop_area.installEventFilter(self)  # Install event filter for drag-and-drop area
 
-
         # Create a vertical layout for the right-side widgets
         right_layout = QVBoxLayout()
         right_layout.addWidget(drag_drop_area)  # Align to the top
-
-       
-
+   
         # Create a vertical layout for the text views
         info_layout = QVBoxLayout()
 
@@ -431,8 +431,6 @@ class ImageWindow(QMainWindow):
         self.img_info.setText("Image Info and Metadata")  # Set the text to display
         self.img_info.setWordWrap(True)  # Enable word wrapping for long text
         info_layout.addWidget(self.img_info, 4)  # 80% height
-
-    
 
         # Add the text view layout to the right layout
         text_view_widget = QWidget(self)
@@ -460,12 +458,12 @@ class ImageWindow(QMainWindow):
         self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
         self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
     
-
         # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
     
     def handle_tag_button_click(self, button):
         tag = button.text().strip().lower().replace("\n", " ")  # Normalize the tag name
+        print(tag)
         self.filter_images_by_tag(tag)    
         
     def toggle_selection_mode(self):
@@ -498,7 +496,6 @@ class ImageWindow(QMainWindow):
             if file_path in self.selected_images:
                 self.selected_images.remove(file_path) 
                 
-
     def load_images_from_directory(self, directory):
         """Load images from a directory and populate the grid with optional checkboxes."""
         self.image_dir = directory
@@ -577,9 +574,7 @@ class ImageWindow(QMainWindow):
             self.tool_tips.setText(f"Loaded {image_count} images from {os.path.basename(directory)}")
         elif self.tool_tips:
             self.tool_tips.setText("No images found in the selected directory")
-            
-          
-                
+                           
     def delete_selected_images(self):
         """Delete all selected images from disk and refresh the grid."""
         if not self.selected_images:
@@ -609,7 +604,7 @@ class ImageWindow(QMainWindow):
                 self, "Deleted", f"Deleted {deleted_count} image(s) successfully."
             )           
 
-    def update_image_sizes(self, size):
+    def update_image_sizes(self, size, target_tag):
         """Update the size of the images and grid layout based on the selected size."""
         if size == "Small":
             new_size = 160  # Small size
@@ -628,27 +623,49 @@ class ImageWindow(QMainWindow):
                 widget.setParent(None)
 
         # Re-add images to the grid layout with the new size and grid configuration
+        """Filter and display images that match the selected custom tag."""
+        # Clear current grid
+        for i in reversed(range(self.grid_layout.count())):
+            widget = self.grid_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.setParent(None)
+
         row = 0
         col = 0
-        for image_label, pixmap, image_path, checkbox, tag in self.image_labels:
-            cropped_pixmap = self.crop_center(pixmap)
-            scaled_pixmap = cropped_pixmap.scaled(new_size, new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            image_label.setPixmap(scaled_pixmap)
-            image_label.setFixedSize(new_size, new_size)
+        match_count = 0
 
-            container = QWidget()
-            layout = QVBoxLayout(container)
-            layout.setAlignment(Qt.AlignCenter)
-            layout.addWidget(image_label)
+        for image_data in self.image_labels:
+            # image_data format: (label, pixmap, path, checkbox, tag)
+            if len(image_data) < 5:
+                continue  # Skip malformed entries
 
-            if self.selection_mode and checkbox:
-                layout.addWidget(checkbox)
+            image_label, pixmap, image_path, checkbox, tag = image_data
+            if tag == target_tag:
+                try:
+                    image_widget = QWidget()
+                    layout = QVBoxLayout(image_widget)
+                    layout.setAlignment(Qt.AlignCenter)
 
-            self.grid_layout.addWidget(container, row, col)
-            col += 1
-            if col == max_columns:
-                col = 0
-                row += 1
+                    image_label = ClickableLabel(self)
+                    image_label.setPixmap(self.crop_center(pixmap))
+                    image_label.setScaledContents(True)
+                    image_label.setFixedSize(new_size, new_size)
+                    layout.addWidget(image_label)
+
+                    image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
+                    image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
+
+                    self.grid_layout.addWidget(image_widget, row, col)
+                    col += 1
+                    match_count += 1
+                    if col == max_columns:
+                        col = 0
+                        row += 1
+                except Exception as e:
+                    print(f"Error displaying filtered image {image_path}: {e}")
+
+        if self.tool_tips:
+            self.tool_tips.setText(f"Filtered to {match_count} images under tag: {target_tag}")  
 
     def on_image_clicked(self, image_path):
         """Handle the image click event with enhanced metadata, quality info, and simplified tags."""
@@ -996,7 +1013,7 @@ class ImageWindow(QMainWindow):
                 elif hasattr(self, 'large_size_btn') and obj == self.large_size_btn:
                     self.tool_tips.setText("Display images in large size (2x2 grid)")
                 elif isinstance(obj, QRadioButton):
-                    self.tool_tips.setText(f"Filter images by {obj.text()} category")
+                    self.tool_tips.setText(f"Filter images by {obj.text()}")
                 elif hasattr(self, 'image_labels') and any(obj == label for label, _, _ in self.image_labels):
                     self.tool_tips.setText("Click for metadata and quality info, double-click to view larger")
                 elif isinstance(obj, DragDropArea):
@@ -1007,7 +1024,7 @@ class ImageWindow(QMainWindow):
             print(f"Event filter error: {e}")
             
         return super().eventFilter(obj, event)
-    
+
     def show_duplicates_dialog(self):
             """Launch a dialog to show and delete detected duplicate images with previews."""
             try:
@@ -1086,7 +1103,7 @@ class ImageWindow(QMainWindow):
 
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Error checking for duplicates: {str(e)}")
-    
+
     def delete_selected_duplicates(self, dialog):
         """Delete files selected in the duplicate review dialog."""
         deleted_count = 0
@@ -1114,8 +1131,7 @@ class ImageWindow(QMainWindow):
             QMessageBox.information(self, "No Action", "No files were selected for deletion.")
 
         dialog.accept()   
-        
-                 
+
     def map_coco_label_to_custom_tag(label):
         mapping = {
             "person": "person",
@@ -1154,8 +1170,7 @@ class ImageWindow(QMainWindow):
             "cat": "cat"
         }
         return mapping.get(label.lower(), "unknown")    
-    
-    
+
     def filter_images_by_tag(self, target_tag):
         """Filter and display images that match the selected custom tag."""
         # Clear current grid
@@ -1181,7 +1196,7 @@ class ImageWindow(QMainWindow):
                     layout.setAlignment(Qt.AlignCenter)
 
                     image_label = ClickableLabel(self)
-                    image_label.setPixmap(pixmap)
+                    image_label.setPixmap(self.crop_center(pixmap))
                     image_label.setScaledContents(True)
                     image_label.setFixedSize(260, 260)
                     layout.addWidget(image_label)
@@ -1200,3 +1215,19 @@ class ImageWindow(QMainWindow):
 
         if self.tool_tips:
             self.tool_tips.setText(f"Filtered to {match_count} images under tag: {target_tag}")
+
+if __name__ == "__main__":
+    
+    # Create the application instance
+    app = QApplication(sys.argv)
+
+    # Create the main window instance with a sample image directory
+    image_directory = r".\data\test_images"  # Replace with your directory path
+    window = ImageWindow(image_directory)
+
+    # Set the window title and show it
+    window.setWindowTitle("Album Vision+")
+    window.show()
+
+    # Start the application event loop
+    sys.exit(app.exec())
