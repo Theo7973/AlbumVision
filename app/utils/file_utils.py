@@ -92,16 +92,3 @@ def find_duplicate_images(input_image_path, folder_path):
             duplicates.append(file_path)
 
     return duplicates
-
-# Only for testing purposes
-# if __name__ == "__main__":
-#     # Example usage
-#     directory_path = r"D:\Full_Sail\Month_15\Project and Portfolio V\Testing"
-#     all_files = get_all_files_in_directory(directory_path)
-#     # print(all_files)  # Output: List of file paths in the directory and subfolders
-#     print(f'Number of fles in dir: {len(all_files)}\n')  # Output: Number of files found
-
-#     # Example usage
-#     filtered_list, non_images = filter_non_image_files(all_files)
-#     print(f'Image file list: {filtered_list}\n')
-#     print(f'Non image file list: {non_images}')
