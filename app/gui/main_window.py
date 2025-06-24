@@ -1,22 +1,20 @@
-
 import sys
 import os
 import shutil
 import asyncio
 from db_utils import db_connect, insert_entry, fetch_latest
 
-# Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
-from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
+from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog, QMessageBox,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
-                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox)
+                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox)
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal, QEvent
 from pprint import pformat
 
-# Import using absolute imports with error handling
+
 try:
     # Create dummy modules if they don't exist
     class DummyModule:
@@ -97,9 +95,26 @@ try:
                 return True
     
     try:
+        from app.gui.dialogs import output_dialog
+    except ImportError:
+        class DummyOutputDialog:
+            class OutputPathDialog(QDialog):
+                def __init__(self, parent=None):
+                    super().__init__(parent)
+                    self.setWindowTitle("Output Path Dialog")
+                    layout = QVBoxLayout()
+                    layout.addWidget(QLabel("Output path functionality not available"))
+                    ok_button = QPushButton("OK")
+                    ok_button.clicked.connect(self.accept)
+                    layout.addWidget(ok_button)
+                    self.setLayout(layout)
+                def get_output_path(self):
+                    return ""
+        output_dialog = DummyOutputDialog()
+
+    try:
         from app.gui.dialogs import export_dialog
     except ImportError:
-        # Create a dummy export dialog
         class DummyExportDialog:
             class ExportDialog(QDialog):
                 def __init__(self, parent=None, source_directory=None):
@@ -246,6 +261,41 @@ class ClickableLabel(QLabel):
         self.doubleClicked.emit()  # Emit the signal when the label is double-clicked
 
 
+# Define basic dark and light stylesheets for the application
+DARK_STYLESHEET = """
+QWidget {
+    background-color: #232629;
+    color: #f0f0f0;
+}
+QPushButton, QRadioButton, QGroupBox, QLabel, QCheckBox {
+    background-color: #232629;
+    color: #f0f0f0;
+}
+QScrollArea {
+    background-color: #232629;
+}
+QFrame {
+    background-color: #232629;
+}
+"""
+
+LIGHT_STYLESHEET = """
+QWidget {
+    background-color: #f0f0f0;
+    color: #232629;
+}
+QPushButton, QRadioButton, QGroupBox, QLabel, QCheckBox {
+    background-color: #f0f0f0;
+    color: #232629;
+}
+QScrollArea {
+    background-color: #f0f0f0;
+}
+QFrame {
+    background-color: #f0f0f0;
+}
+"""
+
 class ImageWindow(QMainWindow):
     def __init__(self, image_dir):
         super().__init__()
@@ -284,13 +334,21 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
-       
-         # install event filter on the import button
+        
+        # ADD THESE 2 NEW LINES HERE:
+        self.stats_bnt = QPushButton("Statistics", self)
+        self.search_bnt = QPushButton("Search & Filter", self)
+
+        # install event filter on the import button  
         self.import_bnt.installEventFilter(self)
         self.export_bnt.installEventFilter(self)
         self.checkDup_bnt.installEventFilter(self)
         self.changeTag_bnt.installEventFilter(self)
         self.outputPath_bnt.installEventFilter(self)
+        
+        # ADD THESE 2 NEW LINES HERE:
+        self.stats_bnt.installEventFilter(self)
+        self.search_bnt.installEventFilter(self)
 
         # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
@@ -298,6 +356,10 @@ class ImageWindow(QMainWindow):
         func_button_layout.addWidget(self.checkDup_bnt)
         func_button_layout.addWidget(self.changeTag_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
+        
+        # ADD THESE 2 NEW LINES HERE:
+        func_button_layout.addWidget(self.stats_bnt)
+        func_button_layout.addWidget(self.search_bnt)
 
 
         # Add the button layout to the left layout
@@ -455,7 +517,10 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
         self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
         self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
-    
+        
+        # ADD THESE 2 NEW LINES HERE:
+        self.stats_bnt.clicked.connect(self.open_stats_dashboard)
+        self.search_bnt.clicked.connect(self.open_search_filter)
 
         # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
@@ -664,12 +729,48 @@ class ImageWindow(QMainWindow):
             print("No folder selected.")
             return None
 
+    def open_output_path_dialog(self):
+        """Open the Output Path dialog with enhanced functionality."""
+        try:
+            dialog = output_dialog.OutputPathDialog(self)
+            if dialog.exec():  # If the user clicks "OK"
+                output_path = dialog.get_output_path()
+                print(f"Dialog returned output path: '{output_path}'")
+                
+                if output_path:
+                    # Save the path using PathSettings
+                    success = self.path_settings.set_output_path(output_path)
+                    if success:
+                        print(f"Successfully saved output path: {output_path}")
+                        # Update any UI elements that show the output path
+                        if hasattr(self, 'tool_tips') and self.tool_tips:
+                            self.tool_tips.setText(f"Output path: {os.path.basename(output_path)}")
+                    else:
+                        print("Failed to save output path")
+                else:
+                    print("No output path provided by dialog")
+        except Exception as e:
+            print(f"Error in output path dialog: {e}")
+            # Fallback - simple path selection
+            from PySide6.QtWidgets import QFileDialog
+            folder_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
+            if folder_path:
+                success = self.path_settings.set_output_path(folder_path)
+                if success and hasattr(self, 'tool_tips') and self.tool_tips:
+                    self.tool_tips.setText(f"Output path: {os.path.basename(folder_path)}")
+
     def open_export_dialog(self):
         """Open the Export dialog with enhanced functionality."""
         try:
-            # Check if output path is set
+            # Refresh path settings to get the latest saved path
+            self.path_settings.settings = self.path_settings.load_settings()
             output_path = self.path_settings.get_output_path()
-            if not output_path:
+            
+            print(f"Checking output path for export: '{output_path}'")
+            
+            if not output_path or output_path.strip() == "":
+                print("No output path found, prompting user")
+                from PySide6.QtWidgets import QMessageBox
                 reply = QMessageBox.question(
                     self, 
                     "No Output Path", 
@@ -678,19 +779,26 @@ class ImageWindow(QMainWindow):
                 )
                 if reply == QMessageBox.Yes:
                     self.open_output_path_dialog()
-                    return
+                    # Check again after setting path
+                    output_path = self.path_settings.get_output_path()
+                    if not output_path or output_path.strip() == "":
+                        print("Still no output path after dialog")
+                        return
                 else:
                     return
-                
+            
+            print(f"Using output path for export: '{output_path}'")
             dialog = export_dialog.ExportDialog(self, self.image_dir)
             if dialog.exec():  # If the user clicks "OK"
                 export_path = dialog.get_output_path()
                 print(f"Images exported to: {export_path}")
                 # Update status in the UI
-                if self.tool_tips:
+                if hasattr(self, 'tool_tips') and self.tool_tips:
                     self.tool_tips.setText(f"Export completed to: {os.path.basename(export_path)}")
         except Exception as e:
-            QMessageBox.information(self, "Export", f"Export functionality: {str(e)}")
+            print(f"Error in export dialog: {e}")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "Export", f"Export functionality error: {str(e)}")
 
     def open_change_tag_dialog(self):
         """Open the Change Tag dialog."""
@@ -703,23 +811,81 @@ class ImageWindow(QMainWindow):
         except Exception as e:
             QMessageBox.information(self, "Change Tag", f"Change tag functionality: {str(e)}")
 
-    def open_output_path_dialog(self):
-        """Open the Output Path dialog with enhanced functionality."""
+    def open_stats_dashboard(self):
+        """Open the Image Statistics Dashboard"""
         try:
-            dialog = output_dialog.OutputPathDialog(self)
-            if dialog.exec():  # If the user clicks "OK"
-                output_path = dialog.get_output_path()
-                print(f"Output path set to: {output_path}")
-                # Update any UI elements that show the output path
-                if self.tool_tips:
-                    self.tool_tips.setText(f"Output path: {os.path.basename(output_path)}")
-        except Exception as e:
-            # Fallback - simple path selection
-            folder_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
-            if folder_path:
-                self.path_settings.set_output_path(folder_path)
-                if self.tool_tips:
-                    self.tool_tips.setText(f"Output path: {os.path.basename(folder_path)}")
+            from app.gui.dialogs.stats_dashboard import StatsDashboardDialog
+            dialog = StatsDashboardDialog(self, self.image_dir)
+            dialog.exec()
+        except ImportError as e:
+            print(f"Stats dashboard not available: {e}")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "Feature Not Available", 
+                               "Statistics dashboard is not available.\nPlease ensure stats_dashboard.py is in app/gui/dialogs/")
+
+    def open_search_filter(self):
+        """Open the Search & Filter System"""
+        try:
+            from app.gui.dialogs.search_filter import SearchFilterDialog
+            dialog = SearchFilterDialog(self, self.image_dir)
+            dialog.exec()
+        except ImportError as e:
+            print(f"Search filter not available: {e}")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "Feature Not Available", 
+                               "Search & Filter system is not available.\nPlease ensure search_filter.py is in app/gui/dialogs/")
+    
+    def debug_path_settings(self):
+        """Debug function to check current path settings"""
+        debug_info = self.path_settings.debug_info()
+        
+        print("\n=== DEBUG PATH SETTINGS ===")
+        for key, value in debug_info.items():
+            print(f"{key}: {value}")
+        
+        # Check if files exist and show content
+        if debug_info['settings_file_exists']:
+            try:
+                with open(debug_info['settings_file'], 'r') as f:
+                    content = f.read()
+                    print(f"Settings file content: {content}")
+            except Exception as e:
+                print(f"Error reading settings file: {e}")
+    
+        print("=== END DEBUG ===\n")
+
+    def test_path_settings(self):
+        """Test function to verify path settings work"""
+        print("Testing path settings...")
+        
+        # Test setting a path
+        test_path = r"C:\Users\Theo-\Desktop\TestOutput"
+        print(f"Setting test path: {test_path}")
+        success = self.path_settings.set_output_path(test_path)
+        print(f"Set result: {success}")
+        
+        # Test getting the path
+        retrieved_path = self.path_settings.get_output_path()
+        print(f"Retrieved path: '{retrieved_path}'")
+        
+        # Test with fresh instance
+        from app.utils.path_settings import PathSettings
+        fresh_settings = PathSettings()
+        fresh_path = fresh_settings.get_output_path()
+        print(f"Fresh instance path: '{fresh_path}'")
+        
+        if test_path == retrieved_path == fresh_path:
+            print("✓ Path settings working correctly!")
+        else:
+            print("✗ Path settings not working correctly!")
+
+    def get_current_output_path(self):
+        """Get the current output path"""
+        return self.path_settings.get_output_path()
+
+    def set_current_output_path(self, path):
+        """Set the current output path"""
+        return self.path_settings.set_output_path(path)
 
     def get_selected_tag(self):
         """Get the currently selected tag from radio buttons."""
@@ -830,6 +996,13 @@ class ImageWindow(QMainWindow):
                             self.tool_tips.setText("Set the output path for sorted images")
                     except:
                         self.tool_tips.setText("Set the output path for sorted images")
+                        
+                # ADD THESE 2 NEW CASES HERE:
+                elif hasattr(self, 'stats_bnt') and obj == self.stats_bnt:
+                    self.tool_tips.setText("View detailed statistics about your image collection")
+                elif hasattr(self, 'search_bnt') and obj == self.search_bnt:
+                    self.tool_tips.setText("Search and filter images by name, size, date, and category")
+                    
                 elif hasattr(self, 'small_size_btn') and obj == self.small_size_btn:
                     self.tool_tips.setText("Display images in small size (5x5 grid)")
                 elif hasattr(self, 'medium_size_btn') and obj == self.medium_size_btn:
