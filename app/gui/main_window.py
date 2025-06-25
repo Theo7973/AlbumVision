@@ -11,9 +11,9 @@ sys.path.insert(0, project_root)
 
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
-                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox)
-from PySide6.QtGui import QPixmap, QIcon
-from PySide6.QtCore import Qt, Signal, QEvent
+                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen, QGraphicsOpacityEffect)
+from PySide6.QtGui import (QPixmap, QIcon, QPixmap, QMovie, QGuiApplication)
+from PySide6.QtCore import (Qt, Signal, QEvent, QTimer, QPropertyAnimation)
 from pprint import pformat
 
 # Import using absolute imports with error handling
@@ -964,12 +964,55 @@ class ImageWindow(QMainWindow):
             self.set_mode("dark")
         else:
             self.set_mode("light")
+# App intro class for Album Vision+
+class IntroSplash(QSplashScreen):
+    """
+    Frameless splash screen that can show a static PNG/SVG
+    or play an animated GIF via QMovie.  Call .start() to
+    fade it out automatically.
+    """
+    def __init__(self, still_path: str, gif_path: str | None = None):
+        super().__init__(QPixmap(still_path))
+        self.setWindowFlag(Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
 
+        # Optional animated GIF in the center
+        if gif_path and os.path.exists(gif_path):
+            self.movie_lbl = QLabel(self)
+            self.movie_lbl.setAlignment(Qt.AlignCenter)
+            self.movie_lbl.setGeometry(self.rect())
+            self.movie = QMovie(gif_path)
+            self.movie_lbl.setMovie(self.movie)
+            self.movie.start()
+
+    def start(self, duration_ms: int = 1800):
+        """Show now, then fade out after *duration_ms*."""
+        self.show()
+        QGuiApplication.processEvents()          # paint immediately
+        QTimer.singleShot(duration_ms, self._fade_out)
+
+    def _fade_out(self):
+        effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(effect)
+        anim = QPropertyAnimation(effect, b"opacity", self)
+        anim.setDuration(600)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+        anim.finished.connect(self.close)
+        anim.start()
 
 # Main execution block for testing
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     
+    #App Intro Execution
+    logo_path = os.path.join(os.path.dirname(__file__),
+                             "resources", "images", "albumvision_logo.png")
+    gif_path  = os.path.join(os.path.dirname(__file__),
+                             "resources", "animations", "intro.gif")
+    splash = IntroSplash(logo_path, gif_path if os.path.exists(gif_path) else None)
+    splash.start(duration_ms=2400)   # show ~2.4 s total
+
     # Default test directory
     test_dir = os.path.join(os.getcwd(), "data", "test_images")
     if not os.path.exists(test_dir):
