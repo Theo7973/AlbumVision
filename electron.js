@@ -1,42 +1,22 @@
+// inside Electron main.js
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const fs = require('fs');
+const { exec } = require('child_process');
 
 function createWindow() {
-  const indexPath = path.join(__dirname, 'dist', 'index.html');
-
-  // ✅ Confirm the file exists
-  if (!fs.existsSync(indexPath)) {
-    console.error('❌ index.html not found at:', indexPath);
-    return;
-  }
-
   const win = new BrowserWindow({
     width: 1024,
     height: 768,
-    show: true,
     webPreferences: {
-      contextIsolation: false,
       nodeIntegration: true,
     },
   });
 
-  console.log('✅ Loading UI from:', indexPath);
-  win.loadFile(indexPath).catch((err) => {
-    console.error('❌ Failed to load index.html:', err);
-  });
+  win.loadURL('http://localhost:5173');
+
+  // Optional: Close after a delay if you want auto-exit
+  setTimeout(() => {
+    exec('python app/gui/main_window.py'); // Launch your GUI app
+    win.close(); // Close Electron window
+  }, 3000); // 3 seconds = match your animation duration
 }
-
-app.whenReady().then(() => {
-  console.log('🚀 Electron app ready');
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-

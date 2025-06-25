@@ -3,11 +3,23 @@ from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from datetime import datetime
 import bcrypt
+import subprocess
+import os
 
 app = Flask(__name__)
 app.config['MONGO_URI'] = 'mongodb://localhost:27017/albumVisionSessionDB'
 mongo = PyMongo(app)
+script_path = os.path.abspath('app/gui/main_window.py')
 
+@app.route('/start-python', methods=['GET'])
+def start_python_app():
+    try:
+        log_file = open('app/gui/log.txt', 'w')
+        subprocess.Popen(['python', script_path], stdout=log_file, stderr=log_file)
+        return jsonify({'message': 'Python app started'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 # Save Session Endpoint
 @app.route('/save-session', methods=['POST'])
 def save_session():
@@ -38,4 +50,4 @@ def resume_session(user_id):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=3001)

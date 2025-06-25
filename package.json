@@ -10,11 +10,11 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "react-scripts build",
     "preview": "vite preview",
     "electron": "electron .",
     "backend": "node run-python.js",
-    "start": "concurrently \"npm run backend\" \"npm run electron\""
+    "start": "electron ."
   },
   "keywords": [],
   "author": "",
@@ -25,7 +25,8 @@
     "framer-motion": "^10.0.0",
     "mysql2": "^3.14.1",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "react-scripts": "5.0.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
