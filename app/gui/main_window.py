@@ -1011,6 +1011,7 @@ if __name__ == "__main__":
     gif_path  = os.path.join(os.path.dirname(__file__),
                              "resources", "animations", "intro.gif")
     splash = IntroSplash(logo_path, gif_path if os.path.exists(gif_path) else None)
+    splash.showMessage("Album Vision+", Qt.AlignBottom | Qt.AlignHCenter, Qt.white)
     print("LOGO PATH:", logo_path)
     print("Exists?   ", os.path.exists(logo_path))
     splash.start(duration_ms=2400)   # show ~2.4 s total
