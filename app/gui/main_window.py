@@ -1011,6 +1011,9 @@ if __name__ == "__main__":
     gif_path  = os.path.join(os.path.dirname(__file__),
                              "resources", "animations", "intro.gif")
     splash = IntroSplash(logo_path, gif_path if os.path.exists(gif_path) else None)
+    splash.showMessage("Loading Album Vision+", Qt.AlignBottom | Qt.AlignHCenter, Qt.white)
+    print("LOGO PATH:", logo_path)
+    print("Exists?   ", os.path.exists(logo_path))
     splash.start(duration_ms=2400)   # show ~2.4 s total
 
     # Default test directory
@@ -1027,7 +1030,13 @@ if __name__ == "__main__":
     
     try:
         window = ImageWindow(test_dir)
-        window.show()
+
+        def show_main():
+            window.show()
+            splash.finish(window)
+            splash.deleteLater()
+
+        QTimer.singleShot(2400, show_main)  # Show main window after splash
         
         print("AlbumVision+ started successfully!")
         print(f"Test directory: {test_dir}")
