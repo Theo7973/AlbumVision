@@ -251,7 +251,8 @@ class ImageWindow(QMainWindow):
         self.button_group = QButtonGroup(self)
         self.selection_mode = False
         self.selected_images = []
-        self.TAG = "cat"
+        self.TAG = ""
+        self.display_size = "Medium"
         
 
         # Set the window icon
@@ -461,6 +462,12 @@ class ImageWindow(QMainWindow):
         # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
     
+    def get_selected_tag(self):
+        button = self.button_group.checkedButton()
+        if button:
+            return button.text()
+        return None
+
     def handle_tag_button_click(self, button):
         tag = button.text().strip().lower().replace("\n", " ")  # Normalize the tag name
         print(tag)
@@ -607,14 +614,17 @@ class ImageWindow(QMainWindow):
     def update_image_sizes(self, size, target_tag):
         """Update the size of the images and grid layout based on the selected size."""
         if size == "Small":
-            new_size = 160  # Small size
+            new_size = 135  # Small size
             max_columns = 5  # 5 columns
+            self.display_size = "Small"
         elif size == "Medium":
             new_size = 260  # Medium size (default)
             max_columns = 3  # 3 columns
+            self.display_size = "Medium"
         elif size == "Large":
             new_size = 400  # Large size
             max_columns = 2  # 2 columns
+            self.display_size = "Large"
 
         # Clear the current grid layout
         for i in reversed(range(self.grid_layout.count())):
@@ -1172,49 +1182,8 @@ class ImageWindow(QMainWindow):
         return mapping.get(label.lower(), "unknown")    
 
     def filter_images_by_tag(self, target_tag):
-        """Filter and display images that match the selected custom tag."""
-        # Clear current grid
-        for i in reversed(range(self.grid_layout.count())):
-            widget = self.grid_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.setParent(None)
-
-        row = 0
-        col = 0
-        match_count = 0
-
-        for image_data in self.image_labels:
-            # image_data format: (label, pixmap, path, checkbox, tag)
-            if len(image_data) < 5:
-                continue  # Skip malformed entries
-
-            image_label, pixmap, image_path, checkbox, tag = image_data
-            if tag == target_tag:
-                try:
-                    image_widget = QWidget()
-                    layout = QVBoxLayout(image_widget)
-                    layout.setAlignment(Qt.AlignCenter)
-
-                    image_label = ClickableLabel(self)
-                    image_label.setPixmap(self.crop_center(pixmap))
-                    image_label.setScaledContents(True)
-                    image_label.setFixedSize(260, 260)
-                    layout.addWidget(image_label)
-
-                    image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
-                    image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
-
-                    self.grid_layout.addWidget(image_widget, row, col)
-                    col += 1
-                    match_count += 1
-                    if col == 3:
-                        col = 0
-                        row += 1
-                except Exception as e:
-                    print(f"Error displaying filtered image {image_path}: {e}")
-
-        if self.tool_tips:
-            self.tool_tips.setText(f"Filtered to {match_count} images under tag: {target_tag}")
+        self.TAG = target_tag
+        self.update_image_sizes(self.display_size, target_tag)
 
 if __name__ == "__main__":
     
