@@ -1,8 +1,4 @@
-"""
-Final Enhanced Export Dialog for Album Vision+
-Includes folder preview, category management, and export functionality
-FIXED to work with PathSettings properly
-"""
+
 from PySide6.QtWidgets import (QDialog, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, 
                               QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QProgressBar,
                               QGroupBox, QListWidget, QLineEdit, QCheckBox, QTextEdit)

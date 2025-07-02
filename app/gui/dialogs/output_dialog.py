@@ -1,4 +1,3 @@
-
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
                              QPushButton, QSpacerItem, QSizePolicy, QFileDialog, QMessageBox,
                              QGroupBox, QListWidget, QCheckBox, QTextEdit, QComboBox)
@@ -282,10 +281,12 @@ class OutputPathDialog(QDialog):
         self.info_text.setPlainText(info_text.strip())
 
     def save_and_accept(self):
-        """Save the output path and accept the dialog"""
+        """Save the output path and accept the dialog - Updated version"""
         output_path = self.path_input.text().strip()
+        print(f"Attempting to save output path: '{output_path}'")
         
         if not output_path:
+            from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(self, "Invalid Path", "Please enter or select an output path.")
             return
         
@@ -294,13 +295,16 @@ class OutputPathDialog(QDialog):
             if self.create_if_missing.isChecked():
                 try:
                     os.makedirs(output_path)
+                    from PySide6.QtWidgets import QMessageBox
                     QMessageBox.information(self, "Directory Created", 
                                           f"Created directory: {output_path}")
                 except Exception as e:
+                    from PySide6.QtWidgets import QMessageBox
                     QMessageBox.critical(self, "Creation Error", 
                                        f"Could not create directory: {str(e)}")
                     return
             else:
+                from PySide6.QtWidgets import QMessageBox
                 QMessageBox.warning(self, "Directory Missing", 
                                    "Directory does not exist and creation is disabled.")
                 return
@@ -308,126 +312,32 @@ class OutputPathDialog(QDialog):
         # Validate write permissions
         if self.validate_writable.isChecked():
             if not os.access(output_path, os.W_OK):
+                from PySide6.QtWidgets import QMessageBox
                 QMessageBox.warning(self, "Permission Error", 
                                    "No write permissions for the selected directory.")
                 return
         
-        # Save to settings
-        self.path_settings.set_output_path(output_path)
-        
-        # Add to history if option is checked
-        if self.add_to_history.isChecked():
-            self.add_to_path_history(output_path)
-        
-        # Save configuration to JSON file
-        self.save_output_config(output_path)
-        
-        QMessageBox.information(self, "Path Saved", 
-                               f"Output path successfully set to:\n{output_path}")
-        self.accept()
-
-    def reset_to_default(self):
-        """Reset to default output path"""
-        default_path = os.path.join(os.path.expanduser("~"), "Documents", "AlbumVision_Export")
-        self.path_input.setText(default_path)
-
-    def load_path_history(self):
-        """Load path history from JSON file"""
-        history_file = os.path.join('data', 'path_history.json')
-        if os.path.exists(history_file):
-            try:
-                with open(history_file, 'r') as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Error loading path history: {e}")
-                return []
-        return []
-
-    def add_to_path_history(self, path):
-        """Add a path to the history"""
-        history_entry = {
-            "path": path,
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        # Remove existing entry if it exists
-        self.path_history = [h for h in self.path_history if h['path'] != path]
-        
-        # Add new entry at the end
-        self.path_history.append(history_entry)
-        
-        # Keep only last 20 entries
-        if len(self.path_history) > 20:
-            self.path_history = self.path_history[-20:]
-        
-        # Save to file
-        self.save_path_history()
-
-    def save_path_history(self):
-        """Save path history to JSON file"""
-        history_file = os.path.join('data', 'path_history.json')
-        os.makedirs(os.path.dirname(history_file), exist_ok=True)
-        
+        # Save to settings - this is the crucial part
         try:
-            with open(history_file, 'w') as f:
-                json.dump(self.path_history, f, indent=4)
-        except Exception as e:
-            print(f"Error saving path history: {e}")
-
-    def clear_path_history(self):
-        """Clear the path history"""
-        reply = QMessageBox.question(
-            self, 
-            "Clear History", 
-            "Are you sure you want to clear all path history?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            self.path_history = []
-            self.save_path_history()
+            success = self.path_settings.set_output_path(output_path)
+            if not success:
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.critical(self, "Save Error", "Failed to save output path to settings.")
+                return
+                
+            print(f"Output path successfully saved: {output_path}")
             
-            # Hide the history group
-            if hasattr(self, 'history_list'):
-                self.history_list.clear()
+            # Add to history if option is checked
+            if self.add_to_history.isChecked():
+                self.add_to_path_history(output_path)
             
-            QMessageBox.information(self, "History Cleared", "Path history has been cleared.")
-
-    def save_output_config(self, output_path):
-        """Save output configuration to JSON file"""
-        config_path = os.path.join('data', 'output_config.json')
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
-        
-        config_data = {
-            "output_path": output_path,
-            "timestamp": datetime.now().isoformat(),
-            "options": {
-                "create_if_missing": self.create_if_missing.isChecked(),
-                "validate_writable": self.validate_writable.isChecked(),
-                "add_to_history": self.add_to_history.isChecked()
-            }
-        }
-        
-        try:
-            with open(config_path, 'w') as f:
-                json.dump(config_data, f, indent=4)
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "Path Saved", 
+                                   f"Output path successfully set to:\n{output_path}")
+            self.accept()
+            
         except Exception as e:
-            print(f"Error saving output config: {e}")
-
-    def get_output_path(self):
-        """Return the text entered in the input field"""
-        return self.path_input.text().strip()
-
-    def showEvent(self, event):
-        """Called when dialog is shown - update current path display"""
-        super().showEvent(event)
-        current_path = self.path_settings.get_output_path()
-        if current_path != self.current_path:
-            self.current_path = current_path
-            if self.current_path:
-                self.current_label.setText(f"Currently set to: {self.current_path}")
-                self.current_label.setStyleSheet("font-weight: bold; color: #006400;")
-            else:
-                self.current_label.setText("No output path currently set")
-                self.current_label.setStyleSheet("font-weight: bold; color: #CC0000;")
+            print(f"Error saving output path: {e}")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Save Error", 
+                               f"Error saving output path: {e}")

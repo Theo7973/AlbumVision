@@ -1,0 +1,158 @@
+[
+    {
+        "timestamp": "2025-06-19T11:59:11.621183",
+        "source_directory": "C:\\Users\\Theo-\\OneDrive\\Documents\\GitHub\\AlbumVision\\data\\test_images",
+        "output_path": "C:/Users/Theo-/OneDrive/Desktop/mm",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Unknown": 22
+            },
+            "errors": 0,
+            "high_quality": 16,
+            "low_quality": 6,
+            "processed": 22
+        }
+    },
+    {
+        "timestamp": "2025-06-19T11:59:33.992848",
+        "source_directory": "C:\\Users\\Theo-\\OneDrive\\Documents\\GitHub\\AlbumVision\\data\\test_images",
+        "output_path": "C:/Users/Theo-/OneDrive/Desktop/mm",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Unknown": 22
+            },
+            "errors": 0,
+            "high_quality": 16,
+            "low_quality": 6,
+            "processed": 22
+        }
+    },
+    {
+        "timestamp": "2025-06-19T12:00:22.210999",
+        "source_directory": "C:/Users/Theo-/OneDrive/Desktop/New folder",
+        "output_path": "C:/Users/Theo-/OneDrive/Desktop/mm",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Unknown": 1
+            },
+            "errors": 0,
+            "high_quality": 0,
+            "low_quality": 1,
+            "processed": 1
+        }
+    },
+    {
+        "timestamp": "2025-06-26T11:14:36.001569",
+        "source_directory": ".\\data\\test_images",
+        "output_path": "C:/Users/Theo-/OneDrive/Desktop/PIc export",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Unknown": 24
+            },
+            "errors": 0,
+            "high_quality": 18,
+            "low_quality": 6,
+            "processed": 24
+        }
+    },
+    {
+        "timestamp": "2025-06-26T11:15:16.391056",
+        "source_directory": ".\\data\\test_images",
+        "output_path": "C:/Users/Theo-/OneDrive/Desktop/PIc export",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Unknown": 24
+            },
+            "errors": 0,
+            "high_quality": 18,
+            "low_quality": 6,
+            "processed": 24
+        }
+    },
+    {
+        "timestamp": "2025-06-26T11:53:13.572662",
+        "source_directory": ".\\data\\test_images",
+        "output_path": "C:/Users/Theo-/OneDrive/Desktop/New folder (3)",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Unknown": 24
+            },
+            "errors": 0,
+            "high_quality": 18,
+            "low_quality": 6,
+            "processed": 24
+        }
+    }
+]
