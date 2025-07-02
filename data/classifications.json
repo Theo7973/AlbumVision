@@ -1,0 +1,164 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2025-07-02T18:48:13.166256",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\2025-ram.jpg",
+    "filename": "2025-ram.jpg",
+    "predicted_class": "vehicle",
+    "confidence": 0.8980814814567566,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 2,
+    "timestamp": "2025-07-02T18:48:13.224835",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\cat-and-kitten-snuggling.jpg",
+    "filename": "cat-and-kitten-snuggling.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.515838086605072,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 3,
+    "timestamp": "2025-07-02T18:48:13.249875",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\cat-lying-down.jpg",
+    "filename": "cat-lying-down.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8132020235061646,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 4,
+    "timestamp": "2025-07-02T18:48:13.313029",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\Cat_November_2010-1a - Copy (3) copy 2.jpg",
+    "filename": "Cat_November_2010-1a - Copy (3) copy 2.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8959525227546692,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 5,
+    "timestamp": "2025-07-02T18:48:13.376757",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\Cat_November_2010-1a - Copy (3) copy 3.jpg",
+    "filename": "Cat_November_2010-1a - Copy (3) copy 3.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8959525227546692,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 6,
+    "timestamp": "2025-07-02T18:48:13.441831",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\Cat_November_2010-1a - Copy (3) copy 4.jpg",
+    "filename": "Cat_November_2010-1a - Copy (3) copy 4.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8959525227546692,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 7,
+    "timestamp": "2025-07-02T18:48:13.588991",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\clear.jpg",
+    "filename": "clear.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8059279918670654,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 8,
+    "timestamp": "2025-07-02T18:48:13.632057",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\DSC01798-1.jpg",
+    "filename": "DSC01798-1.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8445828557014465,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 9,
+    "timestamp": "2025-07-02T18:48:13.658753",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\FELV-cat.jpg",
+    "filename": "FELV-cat.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.9019250273704529,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 10,
+    "timestamp": "2025-07-02T18:48:13.686791",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\Fork1.jpg",
+    "filename": "Fork1.jpg",
+    "predicted_class": "kitchenware",
+    "confidence": 0.9087880253791809,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 11,
+    "timestamp": "2025-07-02T18:48:13.712824",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\How+Much+Does+It+Cost+to+Have+a+Cat+_+ASPCA+Pet+Insurance+_+black+cat+with+yellow+eyes+peeking+out-min.jpg",
+    "filename": "How+Much+Does+It+Cost+to+Have+a+Cat+_+ASPCA+Pet+Insurance+_+black+cat+with+yellow+eyes+peeking+out-min.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8014150857925415,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 12,
+    "timestamp": "2025-07-02T18:48:13.740893",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\images (1).jpg",
+    "filename": "images (1).jpg",
+    "predicted_class": "cat",
+    "confidence": 0.7283578515052795,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 13,
+    "timestamp": "2025-07-02T18:48:13.768572",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\images (2).jpg",
+    "filename": "images (2).jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8648182153701782,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 14,
+    "timestamp": "2025-07-02T18:48:13.793601",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\images (4).jpg",
+    "filename": "images (4).jpg",
+    "predicted_class": "cat",
+    "confidence": 0.760085940361023,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 15,
+    "timestamp": "2025-07-02T18:48:13.818124",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\images.jpg",
+    "filename": "images.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8569431304931641,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 16,
+    "timestamp": "2025-07-02T18:48:13.877746",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\michael-sum-LEpfefQf4rU-unsplash.jpg",
+    "filename": "michael-sum-LEpfefQf4rU-unsplash.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.9033085107803345,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 17,
+    "timestamp": "2025-07-02T18:48:13.908002",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\oakImage-1741195558812-videoSixteenByNineJumbo1600-v2.jpg",
+    "filename": "oakImage-1741195558812-videoSixteenByNineJumbo1600-v2.jpg",
+    "predicted_class": "cat",
+    "confidence": 0.8838931322097778,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 18,
+    "timestamp": "2025-07-02T18:48:14.041319",
+    "image_path": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality\\Zebra1.jpg",
+    "filename": "Zebra1.jpg",
+    "predicted_class": "animal",
+    "confidence": 0.9156408309936523,
+    "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  }
+]
