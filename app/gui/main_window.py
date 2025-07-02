@@ -236,7 +236,13 @@ class DragDropArea(QFrame):
                         parent_window = parent_window.parent()
                     if parent_window:
                         parent_window.load_images_from_directory(folder_path)
-                    self.save_to_database(folder_path, len(img_files))
+                        
+                        # Save to database (synchronous)
+                        parent_window.save_folder_to_database_sync(folder_path, len(img_files))
+                        
+                        # Process with YOLO classification (synchronous)
+                        parent_window.process_folder_with_yolo_sync(folder_path)
+                    
                     folder_found = True
                     break
             if not folder_found:
@@ -246,18 +252,7 @@ class DragDropArea(QFrame):
             print("Please import a folder")  # Print message if the dropped item is invalid
             event.ignore()
 
-def save_to_database(self, folder_path, file_count):
-    # You can pass any data you want ( folder name or file count)
-    asyncio.create_task(self.insert_data(folder_path, file_count))
 
-async def insert_data(self, folder_path, file_count):
-    from db_utils import db_connect, insert_entry
-    pool = await db_connect()
-    entry_text = f"Imported folder: {os.path.basename(folder_path)} with {file_count} files"
-    await insert_entry(pool, entry_text)
-    pool.close()
-    await pool.wait_closed()
-    
 class ClickableLabel(QLabel):
     clicked = Signal()  # Define a custom signal
     doubleClicked = Signal()  # Define a custom signal for double click
@@ -1211,7 +1206,7 @@ class ImageWindow(QMainWindow):
                     self.tool_tips.setText("Display images in large size (2x2 grid)")
                 elif isinstance(obj, QRadioButton):
                     self.tool_tips.setText(f"Filter images by {obj.text()}")
-                elif hasattr(self, 'image_labels') and any(obj == label for label, _, _ in self.image_labels):
+                elif hasattr(self, 'image_labels') and any(obj == label for label, _, _, _, _ in self.image_labels):
                     self.tool_tips.setText("Click for metadata and quality info, double-click to view larger")
                 elif isinstance(obj, DragDropArea):
                     self.tool_tips.setText("Drag and drop a folder here to import images")
@@ -1329,10 +1324,158 @@ class ImageWindow(QMainWindow):
 
         dialog.accept()   
 
-    def map_coco_label_to_custom_tag(label):
+    async def save_folder_to_database(self, folder_path, file_count):
+        """Save folder import to database"""
+        try:
+            from db_utils import db_connect, insert_entry
+            db = await db_connect()
+            entry_text = f"Imported folder: {os.path.basename(folder_path)} with {file_count} files"
+            await insert_entry(db, entry_text, folder_path, file_count)
+            await db.close()
+            print(f"✅ Database updated: {entry_text}")
+        except Exception as e:
+            print(f"❌ Database error: {e}")
+
+    def save_folder_to_database_sync(self, folder_path, file_count):
+        """Save folder import to database - synchronous version"""
+        try:
+            import json
+            from datetime import datetime
+
+            # Ensure data directory exists
+            os.makedirs("data", exist_ok=True)
+
+            # Load existing entries
+            log_file = "data/import_log.json"
+            if os.path.exists(log_file):
+                with open(log_file, 'r') as f:
+                    entries = json.load(f)
+            else:
+                entries = []
+
+            # Add new entry
+            entry_text = f"Imported folder: {os.path.basename(folder_path)} with {file_count} files"
+            new_entry = {
+                "id": len(entries) + 1,
+                "timestamp": datetime.now().isoformat(),
+                "entry_text": entry_text,
+                "folder_path": folder_path,
+                "file_count": file_count
+            }
+            entries.append(new_entry)
+
+            # Save back to file
+            with open(log_file, 'w') as f:
+                json.dump(entries, f, indent=2)
+
+            print(f"✅ Database updated: {entry_text}")
+
+        except Exception as e:
+            print(f"❌ Database error: {e}")
+
+    def process_folder_with_yolo_sync(self, folder_path):
+        """Process all images in folder with YOLO and save classifications - synchronous version"""
+        try:
+            print(f"🔍 Starting YOLO classification for folder: {os.path.basename(folder_path)}")
+
+            # Get all image files
+            image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp']
+            image_files = []
+
+            if os.path.exists(folder_path):
+                for filename in os.listdir(folder_path):
+                    if any(filename.lower().endswith(ext) for ext in image_extensions):
+                        image_files.append(os.path.join(folder_path, filename))
+
+            if not image_files:
+                print("No image files found for YOLO processing")
+                return
+
+            print(f"📸 Found {len(image_files)} images to classify")
+
+            # Process each image with YOLO
+            classification_count = 0
+            for i, image_path in enumerate(image_files):
+                try:
+                    # Run YOLO classification
+                    results = model(image_path, verbose=False)
+
+                    # Get the best classification
+                    if results[0].boxes:
+                        # Get the detection with highest confidence
+                        best_box = max(results[0].boxes, key=lambda x: x.conf[0])
+                        cls_id = int(best_box.cls[0])
+                        confidence = float(best_box.conf[0])
+                        coco_label = model.names[cls_id]
+                        custom_tag = self.map_coco_label_to_custom_tag(coco_label)
+                    else:
+                        # No detections
+                        custom_tag = "unknown"
+                        confidence = 0.0
+
+                    # Save classification to database (synchronous)
+                    self.save_yolo_classification_sync(image_path, custom_tag, confidence, folder_path)
+
+                    classification_count += 1
+                    print(f"✅ Classified {os.path.basename(image_path)} as {custom_tag} (confidence: {confidence:.2f})")
+
+                except Exception as e:
+                    print(f"❌ YOLO error for {os.path.basename(image_path)}: {e}")
+                    # Save as unknown if YOLO fails
+                    self.save_yolo_classification_sync(image_path, "unknown", 0.0, folder_path)
+
+            print(f"✅ YOLO classification complete! Processed {classification_count} images")
+
+            # Update UI to show completion
+            if hasattr(self, 'tool_tips') and self.tool_tips:
+                self.tool_tips.setText(f"YOLO classified {classification_count} images from {os.path.basename(folder_path)}")
+
+        except Exception as e:
+            print(f"❌ Error in YOLO processing: {e}")
+
+    def save_yolo_classification_sync(self, image_path, predicted_class, confidence, folder_source):
+        """Save YOLO classification result to database - synchronous version"""
+        try:
+            import json
+            from datetime import datetime
+
+            # Ensure data directory exists
+            os.makedirs("data", exist_ok=True)
+
+            # Load existing classifications
+            classifications_file = "data/classifications.json"
+            if os.path.exists(classifications_file):
+                with open(classifications_file, 'r') as f:
+                    classifications = json.load(f)
+            else:
+                classifications = []
+
+            # Add new classification
+            new_classification = {
+                "id": len(classifications) + 1,
+                "timestamp": datetime.now().isoformat(),
+                "image_path": image_path,
+                "filename": os.path.basename(image_path),
+                "predicted_class": predicted_class,
+                "confidence": confidence,
+                "folder_source": folder_source
+            }
+            classifications.append(new_classification)
+
+            # Save back to file
+            with open(classifications_file, 'w') as f:
+                json.dump(classifications, f, indent=2)
+
+            print(f"💾 Saved classification: {os.path.basename(image_path)} -> {predicted_class}")
+
+        except Exception as e:
+            print(f"❌ Classification save error: {e}")
+
+    def map_coco_label_to_custom_tag(self, label):
+        """Map COCO labels to custom tags"""
         mapping = {
             "person": "person",
-            "cat": "cat",
+            "cat": "cat", 
             "dog": "dog",
             "car": "vehicle",
             "bus": "vehicle",
@@ -1362,9 +1505,7 @@ class ImageWindow(QMainWindow):
             "cow": "animal",
             "horse": "animal",
             "bird": "animal",
-            "giraffe": "animal",
-            "dog": "dog",
-            "cat": "cat"
+            "giraffe": "animal"
         }
         return mapping.get(label.lower(), "unknown")    
 
@@ -1412,6 +1553,80 @@ class ImageWindow(QMainWindow):
 
         if self.tool_tips:
             self.tool_tips.setText(f"Filtered to {match_count} images under tag: {target_tag}")
+
+    def process_folder_with_yolo(self, folder_path):
+        """Process all images in folder with YOLO and save classifications to database"""
+        try:
+            print(f"🔍 Starting YOLO classification for folder: {os.path.basename(folder_path)}")
+            
+            # Get all image files
+            image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp']
+            image_files = []
+            
+            if os.path.exists(folder_path):
+                for filename in os.listdir(folder_path):
+                    if any(filename.lower().endswith(ext) for ext in image_extensions):
+                        image_files.append(os.path.join(folder_path, filename))
+            
+            if not image_files:
+                print("No image files found for YOLO processing")
+                return
+            
+            print(f"📸 Found {len(image_files)} images to classify")
+            
+            # Process each image with YOLO
+            classification_count = 0
+            for i, image_path in enumerate(image_files):
+                try:
+                    # Run YOLO classification
+                    results = model(image_path, verbose=False)
+                    
+                    # Get the best classification
+                    if results[0].boxes:
+                        # Get the detection with highest confidence
+                        best_box = max(results[0].boxes, key=lambda x: x.conf[0])
+                        cls_id = int(best_box.cls[0])
+                        confidence = float(best_box.conf[0])
+                        coco_label = model.names[cls_id]
+                        custom_tag = map_coco_label_to_custom_tag(coco_label)
+                    else:
+                        # No detections
+                        custom_tag = "unknown"
+                        confidence = 0.0
+                    
+                    # Save classification to database
+                    asyncio.create_task(self.save_yolo_classification(
+                        image_path, custom_tag, confidence, folder_path
+                    ))
+                    
+                    classification_count += 1
+                    print(f"✅ Classified {os.path.basename(image_path)} as {custom_tag} (confidence: {confidence:.2f})")
+                    
+                except Exception as e:
+                    print(f"❌ YOLO error for {os.path.basename(image_path)}: {e}")
+                    # Save as unknown if YOLO fails
+                    asyncio.create_task(self.save_yolo_classification(
+                        image_path, "unknown", 0.0, folder_path
+                    ))
+            
+            print(f"✅ YOLO classification complete! Processed {classification_count} images")
+            
+            # Update UI to show completion
+            if hasattr(self, 'tool_tips') and self.tool_tips:
+                self.tool_tips.setText(f"YOLO classified {classification_count} images from {os.path.basename(folder_path)}")
+                
+        except Exception as e:
+            print(f"❌ Error in YOLO processing: {e}")
+
+    async def save_yolo_classification(self, image_path, predicted_class, confidence, folder_source):
+        """Save YOLO classification result to database"""
+        try:
+            from db_utils import db_connect, insert_classification
+            db = await db_connect()
+            await insert_classification(db, image_path, predicted_class, confidence, folder_source)
+            await db.close()
+        except Exception as e:
+            print(f"❌ Database save error: {e}")
 
 if __name__ == "__main__":
     

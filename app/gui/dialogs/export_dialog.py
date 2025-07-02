@@ -1,4 +1,3 @@
-
 from PySide6.QtWidgets import (QDialog, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, 
                               QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QProgressBar,
                               QGroupBox, QListWidget, QLineEdit, QCheckBox, QTextEdit)
@@ -140,7 +139,7 @@ class ExportWorker(QThread):
         self.quality_check = quality_check
         
     def run(self):
-        """Run the export process in a separate thread"""
+        """Run the export process with YOLO classification integration"""
         try:
             # Get all image files
             all_files = get_all_files_in_directory.get_all_files_in_directory(self.source_dir)
@@ -152,6 +151,10 @@ class ExportWorker(QThread):
             
             self.status.emit(f"Found {len(image_files)} images to process...")
             
+            # Load YOLO classifications from database
+            self.status.emit("Loading YOLO classifications from database...")
+            yolo_classifications = self.load_yolo_classifications()
+            
             # Create category folders
             folder_paths = create_output_folders(self.categories, self.output_path)
             self.status.emit(f"Created {len(folder_paths)} category folders...")
@@ -162,7 +165,9 @@ class ExportWorker(QThread):
                 'high_quality': 0,
                 'low_quality': 0,
                 'errors': 0,
-                'by_category': {}
+                'by_category': {},
+                'yolo_classified': 0,
+                'manual_classified': 0
             }
             
             for i, img_path in enumerate(image_files):
@@ -177,9 +182,14 @@ class ExportWorker(QThread):
                 else:
                     quality = "high"  # Default to high if not checking
                 
-                # Determine target folder (for now, use Unknown category)
-                # In a full implementation, this would use YOLO11 detection
-                target_category = "Unknown"
+                # NEW: Determine target category using YOLO classifications
+                target_category = self.get_image_category(img_path, yolo_classifications)
+                
+                # Track classification source
+                if target_category != "Unknown":
+                    stats['yolo_classified'] += 1
+                else:
+                    stats['manual_classified'] += 1
                 
                 # Create subfolder structure: Category/Quality
                 if quality == "high":
@@ -216,6 +226,62 @@ class ExportWorker(QThread):
             
         except Exception as e:
             self.error.emit(str(e))
+
+    def load_yolo_classifications(self):
+        """Load YOLO classifications from database"""
+        try:
+            import json
+            classifications_file = "data/classifications.json"
+            if os.path.exists(classifications_file):
+                with open(classifications_file, 'r') as f:
+                    classifications = json.load(f)
+                # Create a lookup dictionary: image_path -> classification
+                lookup = {}
+                for item in classifications:
+                    if 'image_path' in item and 'predicted_class' in item:
+                        lookup[item['image_path']] = {
+                            'predicted_class': item['predicted_class'],
+                            'confidence': item.get('confidence', 0.0)
+                        }
+                print(f"✅ Loaded {len(lookup)} YOLO classifications from database")
+                return lookup
+            else:
+                print("⚠️ No YOLO classifications found in database")
+                return {}
+        except Exception as e:
+            print(f"❌ Error loading YOLO classifications: {e}")
+            return {}
+
+    def get_image_category(self, image_path, yolo_classifications):
+        """Get category for an image from YOLO classifications or fallback to Unknown"""
+        try:
+            # Check if we have a YOLO classification for this image
+            if image_path in yolo_classifications:
+                yolo_result = yolo_classifications[image_path]
+                predicted_class = yolo_result['predicted_class']
+                confidence = yolo_result.get('confidence', 0.0)
+                # Only use YOLO result if confidence is reasonable
+                if confidence > 0.3:  # 30% confidence threshold
+                    # Map to export categories
+                    category_mapping = {
+                        'person': 'Person',
+                        'cat': 'Cat', 
+                        'dog': 'Dog',
+                        'animal': 'Animal',
+                        'vehicle': 'Vehicle',
+                        'kitchenware': 'Kitchenware',
+                        'appliance': 'Appliance',
+                        'entertainment device': 'Entertainment_Device'
+                    }
+                    mapped_category = category_mapping.get(predicted_class.lower(), predicted_class.title())
+                    # Make sure the category exists in our export categories
+                    if mapped_category in self.categories:
+                        return mapped_category
+            # Fallback to Unknown if no YOLO classification or low confidence
+            return "Unknown"
+        except Exception as e:
+            print(f"❌ Error getting category for {os.path.basename(image_path)}: {e}")
+            return "Unknown"
 
 class ExportDialog(QDialog):
     def __init__(self, parent=None, source_directory=None):
@@ -447,20 +513,24 @@ class ExportDialog(QDialog):
         self.status_label.setText(message)
 
     def export_finished(self, stats):
-        """Handle successful export completion"""
+        """Handle successful export completion with YOLO stats"""
         # Save export configuration
         self.save_export_config(stats)
         
-        # Show completion message
+        # Show completion message with YOLO information
         message = f"Export completed successfully!\n\n"
         message += f"Processed: {stats['processed']} images\n"
         message += f"High quality: {stats['high_quality']}\n"
         message += f"Low quality: {stats['low_quality']}\n"
+        message += f"YOLO classified: {stats.get('yolo_classified', 0)}\n"
+        message += f"Manual/Unknown: {stats.get('manual_classified', 0)}\n"
         if stats['errors'] > 0:
             message += f"Errors: {stats['errors']}\n"
+        message += f"\nCategory breakdown:\n"
+        for category, count in stats['by_category'].items():
+            message += f"  {category}: {count} images\n"
         message += f"\nExported to: {self.output_path}"
-        
-        QMessageBox.information(self, "Export Complete", message)
+        QMessageBox.information(self.parent(), "Export Complete", message)
         self.accept()
 
     def export_error(self, error_message):
