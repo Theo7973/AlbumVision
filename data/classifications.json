@@ -160,5 +160,32 @@
     "predicted_class": "animal",
     "confidence": 0.9156408309936523,
     "folder_source": "C:/Users/theo-/OneDrive/Desktop/test/Unknown/High_Quality"
+  },
+  {
+    "id": 19,
+    "timestamp": "2025-07-03T11:21:27.662204",
+    "image_path": "C:/Users/Theo-/OneDrive/Desktop/New folder (2)\\pexels-hellodrubo-31584311.jpg",
+    "filename": "pexels-hellodrubo-31584311.jpg",
+    "predicted_class": "person",
+    "confidence": 0.8339365124702454,
+    "folder_source": "C:/Users/Theo-/OneDrive/Desktop/New folder (2)"
+  },
+  {
+    "id": 20,
+    "timestamp": "2025-07-03T11:21:54.511557",
+    "image_path": "C:/Users/Theo-/OneDrive/Desktop/New folder\\360_F_383258331_D8imaEMl8Q3lf7EKU2Pi78Cn0R7KkW9o.jpg",
+    "filename": "360_F_383258331_D8imaEMl8Q3lf7EKU2Pi78Cn0R7KkW9o.jpg",
+    "predicted_class": "person",
+    "confidence": 0.9175251722335815,
+    "folder_source": "C:/Users/Theo-/OneDrive/Desktop/New folder"
+  },
+  {
+    "id": 21,
+    "timestamp": "2025-07-03T11:25:58.695540",
+    "image_path": "C:/Users/Theo-/OneDrive/Desktop/New folder\\360_F_383258331_D8imaEMl8Q3lf7EKU2Pi78Cn0R7KkW9o.jpg",
+    "filename": "360_F_383258331_D8imaEMl8Q3lf7EKU2Pi78Cn0R7KkW9o.jpg",
+    "predicted_class": "person",
+    "confidence": 0.9175251722335815,
+    "folder_source": "C:/Users/Theo-/OneDrive/Desktop/New folder"
   }
 ]

@@ -154,5 +154,61 @@
             "low_quality": 6,
             "processed": 24
         }
+    },
+    {
+        "timestamp": "2025-07-03T11:22:41.118450",
+        "source_directory": "C:/Users/Theo-/OneDrive/Desktop/New folder",
+        "output_path": "C:/Users/theo-/OneDrive/Desktop/test",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Person": 1
+            },
+            "errors": 0,
+            "high_quality": 0,
+            "low_quality": 1,
+            "manual_classified": 0,
+            "processed": 1,
+            "yolo_classified": 1
+        }
+    },
+    {
+        "timestamp": "2025-07-03T11:26:27.734178",
+        "source_directory": "C:/Users/Theo-/OneDrive/Desktop/New folder",
+        "output_path": "C:/Users/theo-/OneDrive/Desktop/test",
+        "categories": [
+            "Animal",
+            "Appliance",
+            "Cat",
+            "Dog",
+            "Entertainment_Device",
+            "Kitchenware",
+            "Person",
+            "Vehicle",
+            "Unknown"
+        ],
+        "quality_check_enabled": true,
+        "statistics": {
+            "by_category": {
+                "Person": 1
+            },
+            "errors": 0,
+            "high_quality": 0,
+            "low_quality": 1,
+            "manual_classified": 0,
+            "processed": 1,
+            "yolo_classified": 1
+        }
     }
 ]

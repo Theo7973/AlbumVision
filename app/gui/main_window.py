@@ -13,6 +13,7 @@ from functools import partial
 # Add the project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
+from app.gui.widgets.yolo_results_widget import YOLOResultsWidget
 
 from app.utils.Auto_Sort_Basic import model
 from app.utils.file_utils import map_coco_label_to_custom_tag
@@ -494,38 +495,42 @@ class ImageWindow(QMainWindow):
         left_widget.setFixedWidth(900)
         main_layout.addWidget(left_widget)
 
+        # === MODIFIED RIGHT PANEL WITH YOLO RESULTS ===
         right_layout = QVBoxLayout()
+        
+        # Drag and drop area (keep existing)
         drag_drop_area = DragDropArea(self)
-        drag_drop_area.installEventFilter(self)  # Install event filter for drag-and-drop area
-
-        # Create a vertical layout for the right-side widgets
-        right_layout = QVBoxLayout()
-        right_layout.addWidget(drag_drop_area)  # Align to the top
-   
-        # Create a vertical layout for the text views
+        drag_drop_area.installEventFilter(self)
+        right_layout.addWidget(drag_drop_area)
+        
+        
+        self.yolo_results_widget = YOLOResultsWidget(self)
+        # Connect signal to handle image viewing requests
+        self.yolo_results_widget.image_view_requested.connect(self.on_image_clicked)
+        right_layout.addWidget(self.yolo_results_widget)
+        
+        # Existing image info section 
         info_layout = QVBoxLayout()
-
-        # Create the first QLabel for the text view
         self.img_info = QLabel(self)
-        self.img_info.setText("Image Info and Metadata")  # Set the text to display
-        self.img_info.setWordWrap(True)  # Enable word wrapping for long text
-        info_layout.addWidget(self.img_info, 4)  # 80% height
-
-        # Add the text view layout to the right layout
+        self.img_info.setText("Image Info and Metadata")
+        self.img_info.setWordWrap(True)
+        self.img_info.setMaximumHeight(150)  
+        info_layout.addWidget(self.img_info)
+        
         text_view_widget = QWidget(self)
         text_view_widget.setLayout(info_layout)
         right_layout.addWidget(text_view_widget)
 
-        # Add the right layout to the main layout
+        # Added the right layout to the main layout
         right_widget = QWidget(self)
         right_widget.setLayout(right_layout)
         right_widget.setFixedWidth(300)  # Set the width of the right widget
         main_layout.addWidget(right_widget)  # 30% width
 
-        # Add the main_layout (left/right panels) to the outer_layout
+        # Added the main_layout (left/right panels) to the outer_layout
         outer_layout.addLayout(main_layout)
 
-        # --- Add the tool tip label at the bottom of the window ---
+        # --- Added the tool tip label at the bottom of the window ---
         self.tool_tips = QLabel(self)
         self.tool_tips.setText("Tool Tips")
         self.tool_tips.setWordWrap(True)
@@ -537,7 +542,7 @@ class ImageWindow(QMainWindow):
         self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
         self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
         
-        # ADD THESE 2 NEW LINES HERE:
+       
         self.stats_bnt.clicked.connect(self.open_stats_dashboard)
         self.search_bnt.clicked.connect(self.open_search_filter)
 
@@ -620,15 +625,22 @@ class ImageWindow(QMainWindow):
                             image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
                             image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
 
-                            # Get custom tag using the model
+                            # Get custom tag using the model - FIXED VERSION
                             try:
                                 results = model(image_path, verbose=False)
-                                coco_tags = set(model.names[int(box.cls[0])] for box in results[0].boxes)
-                                tag = map_coco_label_to_custom_tag(list(coco_tags)[0]) if coco_tags else "Unknown"
-                            except:
-                                tag = "Unknown"
+                                if results[0].boxes:
+                                    # Get the detection with highest confidence
+                                    best_box = max(results[0].boxes, key=lambda x: x.conf[0])
+                                    cls_id = int(best_box.cls[0])
+                                    coco_label = model.names[cls_id]
+                                    tag = self.map_coco_label_to_custom_tag(coco_label)
+                                else:
+                                    tag = "unknown"
+                            except Exception as e:
+                                print(f"YOLO error for {image_path}: {e}")
+                                tag = "unknown"
 
-                            # --- Add checkbox if selection mode is active ---
+                            # --- Added checkbox if selection mode is active ---
                             if self.selection_mode:
                                 checkbox = QCheckBox("Select")
                                 checkbox.setStyleSheet("margin-left: 5px; font-size: 10px;")
@@ -752,7 +764,7 @@ class ImageWindow(QMainWindow):
             self.tool_tips.setText(f"Filtered to {match_count} images under tag: {target_tag}")  
 
     def on_image_clicked(self, image_path):
-        """Handle the image click event with enhanced metadata, quality info, and simplified tags."""
+        """Handle the image click event with enhanced metadata, quality info, and YOLO results."""
         try:
             # Get basic metadata
             if hasattr(Get_MetaData, 'get_image_metadata'):
@@ -767,67 +779,41 @@ class ImageWindow(QMainWindow):
             # Check image quality
             quality, score, dimensions = check_image_quality(image_path)
 
-            # --- NEW PART: Run YOLOv8 and map to custom tags ---
+            # --- YOLO PROCESSING SECTION ---
             try:
-                from ultralytics import YOLO
-                model = YOLO("yolov8n.pt")
-
-                def map_coco_label_to_custom_tag(label):
-                    mapping = {
-                        "person": "person",
-                        "cat": "cat",
-                        "dog": "dog",
-                        "car": "vehicle",
-                        "bus": "vehicle",
-                        "truck": "vehicle",
-                        "bicycle": "vehicle",
-                        "motorcycle": "vehicle",
-                        "airplane": "vehicle",
-                        "train": "vehicle",
-                        "knife": "kitchenware",
-                        "fork": "kitchenware",
-                        "spoon": "kitchenware",
-                        "bowl": "kitchenware",
-                        "refrigerator": "appliance",
-                        "microwave": "appliance",
-                        "oven": "appliance",
-                        "toaster": "appliance",
-                        "tv": "entertainment device",
-                        "laptop": "entertainment device",
-                        "cell phone": "entertainment device",
-                        "mouse": "entertainment device",
-                        "keyboard": "entertainment device",
-                        "remote": "entertainment device",
-                        "bear": "animal",
-                        "zebra": "animal",
-                        "elephant": "animal",
-                        "sheep": "animal",
-                        "cow": "animal",
-                        "horse": "animal",
-                        "bird": "animal",
-                        "giraffe": "animal"
-                    }
-                    return mapping.get(label.lower(), "unknown")
-
+                # Run YOLO classification
                 results = model(image_path, verbose=False)
-                tags_detected = set()
-
-                for box in results[0].boxes:
-                    cls_id = int(box.cls[0])
+                
+                if results[0].boxes:
+                    # Get the detection with highest confidence
+                    best_box = max(results[0].boxes, key=lambda x: x.conf[0])
+                    cls_id = int(best_box.cls[0])
+                    confidence = float(best_box.conf[0])
                     coco_label = model.names[cls_id]
-                    custom_tag = map_coco_label_to_custom_tag(coco_label)
-                    tags_detected.add(custom_tag)
+                    custom_tag = self.map_coco_label_to_custom_tag(coco_label)
+                    
+                    # Update YOLO results widget
+                    if hasattr(self, 'yolo_results_widget'):
+                        self.yolo_results_widget.add_detection_result(image_path, custom_tag, confidence)
+                else:
+                    # No detections
+                    custom_tag = "unknown"
+                    confidence = 0.0
+                    if hasattr(self, 'yolo_results_widget'):
+                        self.yolo_results_widget.add_detection_result(image_path, custom_tag, confidence)
 
-            except Exception as model_error:
-                tags_detected = {"unknown"}
-                print(f"YOLO model error: {model_error}")
+            except Exception as yolo_error:
+                print(f"YOLO processing error for {os.path.basename(image_path)}: {yolo_error}")
+                custom_tag = "unknown"
+                confidence = 0.0
+                if hasattr(self, 'yolo_results_widget'):
+                    self.yolo_results_widget.add_detection_result(image_path, custom_tag, confidence)
 
-            # -------------------------------------------------
-
+            # Enhanced display with YOLO results
             if isinstance(metadata, dict) and "error" in metadata:
                 self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
             else:
-                # Enhanced metadata display with quality information
+                # Enhanced metadata display with YOLO and quality information
                 info_text = f"File: {os.path.basename(image_path)}\n\n"
                 
                 # Basic file info
@@ -838,22 +824,29 @@ class ImageWindow(QMainWindow):
                 except:
                     pass
                 
+                # YOLO Detection Results
+                info_text += "🧠 YOLO Detection:\n"
+                info_text += f"Category: {custom_tag.title()}\n"
+                if confidence > 0:
+                    info_text += f"Confidence: {confidence:.1%}\n"
+                else:
+                    info_text += "Confidence: N/A\n"
+                info_text += "\n"
+                
                 # Quality analysis
                 info_text += "Quality Analysis:\n"
                 info_text += f"Quality: {quality.upper()}\n"
                 info_text += f"Score: {score:.2f}\n"
                 info_text += f"Dimensions: {dimensions[0]} x {dimensions[1]}\n\n"
-
-                # Display simplified tags
-                info_text += f"Detected Tags: {', '.join(tags_detected)}\n\n"
                 
                 # Additional metadata if available
                 if isinstance(metadata, dict):
                     info_text += "Additional Metadata:\n"
                     for key, value in metadata.items():
                         info_text += f"{key}: {value}\n"
-                
-                self.img_info.setText(info_text)
+            
+            self.img_info.setText(info_text)
+        # End of main try block
         except Exception as e:
             self.img_info.setText(f"Error processing image:\n{str(e)}")
 
@@ -1192,7 +1185,7 @@ class ImageWindow(QMainWindow):
                     except:
                         self.tool_tips.setText("Set the output path for sorted images")
                         
-                # ADD THESE 2 NEW CASES HERE:
+              
                 elif hasattr(self, 'stats_bnt') and obj == self.stats_bnt:
                     self.tool_tips.setText("View detailed statistics about your image collection")
                 elif hasattr(self, 'search_bnt') and obj == self.search_bnt:
@@ -1373,8 +1366,46 @@ class ImageWindow(QMainWindow):
         except Exception as e:
             print(f"❌ Database error: {e}")
 
+    def save_yolo_classification_sync(self, image_path, predicted_class, confidence, folder_source):
+        """Save YOLO classification result to database - synchronous version"""
+        try:
+            import json
+            from datetime import datetime
+
+            # Ensure data directory exists
+            os.makedirs("data", exist_ok=True)
+
+            # Load existing classifications
+            classifications_file = "data/classifications.json"
+            if os.path.exists(classifications_file):
+                with open(classifications_file, 'r') as f:
+                    classifications = json.load(f)
+            else:
+                classifications = []
+
+            # Add new classification
+            new_classification = {
+                "id": len(classifications) + 1,
+                "timestamp": datetime.now().isoformat(),
+                "image_path": image_path,
+                "filename": os.path.basename(image_path),
+                "predicted_class": predicted_class,
+                "confidence": confidence,
+                "folder_source": folder_source
+            }
+            classifications.append(new_classification)
+
+            # Save back to file
+            with open(classifications_file, 'w') as f:
+                json.dump(classifications, f, indent=2)
+
+            print(f"💾 Saved classification: {os.path.basename(image_path)} -> {predicted_class}")
+
+        except Exception as e:
+            print(f"❌ Classification save error: {e}")
+
     def process_folder_with_yolo_sync(self, folder_path):
-        """Process all images in folder with YOLO and save classifications - synchronous version"""
+        """Process all images in folder with YOLO and save classifications - synchronous version with UI updates"""
         try:
             print(f"🔍 Starting YOLO classification for folder: {os.path.basename(folder_path)}")
 
@@ -1392,6 +1423,9 @@ class ImageWindow(QMainWindow):
                 return
 
             print(f"📸 Found {len(image_files)} images to classify")
+            
+            # Start processing indication in YOLO widget
+            self.yolo_results_widget.start_processing(len(image_files))
 
             # Process each image with YOLO
             classification_count = 0
@@ -1413,17 +1447,27 @@ class ImageWindow(QMainWindow):
                         custom_tag = "unknown"
                         confidence = 0.0
 
+                    # NEW: Update YOLO results widget with each result
+                    self.yolo_results_widget.add_detection_result(image_path, custom_tag, confidence)
+
                     # Save classification to database (synchronous)
                     self.save_yolo_classification_sync(image_path, custom_tag, confidence, folder_path)
 
                     classification_count += 1
                     print(f"✅ Classified {os.path.basename(image_path)} as {custom_tag} (confidence: {confidence:.2f})")
 
+                    # Process events to keep UI responsive
+                    QApplication.processEvents()
+
                 except Exception as e:
                     print(f"❌ YOLO error for {os.path.basename(image_path)}: {e}")
                     # Save as unknown if YOLO fails
+                    self.yolo_results_widget.add_detection_result(image_path, "unknown", 0.0)
                     self.save_yolo_classification_sync(image_path, "unknown", 0.0, folder_path)
 
+            # Finish processing indication
+            self.yolo_results_widget.finish_processing()
+            
             print(f"✅ YOLO classification complete! Processed {classification_count} images")
 
             # Update UI to show completion
@@ -1432,6 +1476,108 @@ class ImageWindow(QMainWindow):
 
         except Exception as e:
             print(f"❌ Error in YOLO processing: {e}")
+
+    def process_single_image_yolo(self, image_path):
+        """Process a single image with YOLO and update results widget"""
+        try:
+            # Run YOLO classification
+            results = model(image_path, verbose=False)
+
+            # Get the best classification
+            if results[0].boxes:
+                best_box = max(results[0].boxes, key=lambda x: x.conf[0])
+                cls_id = int(best_box.cls[0])
+                confidence = float(best_box.conf[0])
+                coco_label = model.names[cls_id]
+                custom_tag = self.map_coco_label_to_custom_tag(coco_label)
+            else:
+                custom_tag = "unknown"
+                confidence = 0.0
+
+            # Update YOLO results widget
+            self.yolo_results_widget.add_detection_result(image_path, custom_tag, confidence)
+            
+            return custom_tag, confidence
+            
+        except Exception as e:
+            print(f"❌ YOLO error for {os.path.basename(image_path)}: {e}")
+            self.yolo_results_widget.add_detection_result(image_path, "unknown", 0.0)
+            return "unknown", 0.0
+
+    def clear_yolo_results(self):
+        """Clear all YOLO results"""
+        if hasattr(self, 'yolo_results_widget'):
+            self.yolo_results_widget.clear_all_results()
+
+    def closeEvent(self, event):
+        """Handle the close event to perform any necessary cleanup."""
+        self.clear_yolo_results()  # Clear YOLO results on close
+        event.accept()  # Accept the event to close the window
+
+    def resizeEvent(self, event):
+        """Handle the resize event to adjust layouts or widgets if necessary."""
+        super().resizeEvent(event)
+        # Adjust the minimum size of the window
+        min_width = 800
+        min_height = 600
+        if self.width() < min_width or self.height() < min_height:
+            self.resize(max(min_width, self.width()), max(min_height, self.height()))
+
+    def keyPressEvent(self, event):
+        """Handle key press events for shortcuts or other functions."""
+        super().keyPressEvent(event)
+        # Example: Ctrl+Q to close the application
+        if event.key() == Qt.Key_Q and event.modifiers() == Qt.ControlModifier:
+            self.close()
+
+    async def save_folder_to_database(self, folder_path, file_count):
+        """Save folder import to database"""
+        try:
+            from db_utils import db_connect, insert_entry
+            db = await db_connect()
+            entry_text = f"Imported folder: {os.path.basename(folder_path)} with {file_count} files"
+            await insert_entry(db, entry_text, folder_path, file_count)
+            await db.close()
+            print(f"✅ Database updated: {entry_text}")
+        except Exception as e:
+            print(f"❌ Database error: {e}")
+
+    def save_folder_to_database_sync(self, folder_path, file_count):
+        """Save folder import to database - synchronous version"""
+        try:
+            import json
+            from datetime import datetime
+
+            # Ensure data directory exists
+            os.makedirs("data", exist_ok=True)
+
+            # Load existing entries
+            log_file = "data/import_log.json"
+            if os.path.exists(log_file):
+                with open(log_file, 'r') as f:
+                    entries = json.load(f)
+            else:
+                entries = []
+
+            # Add new entry
+            entry_text = f"Imported folder: {os.path.basename(folder_path)} with {file_count} files"
+            new_entry = {
+                "id": len(entries) + 1,
+                "timestamp": datetime.now().isoformat(),
+                "entry_text": entry_text,
+                "folder_path": folder_path,
+                "file_count": file_count
+            }
+            entries.append(new_entry)
+
+            # Save back to file
+            with open(log_file, 'w') as f:
+                json.dump(entries, f, indent=2)
+
+            print(f"✅ Database updated: {entry_text}")
+
+        except Exception as e:
+            print(f"❌ Database error: {e}")
 
     def save_yolo_classification_sync(self, image_path, predicted_class, confidence, folder_source):
         """Save YOLO classification result to database - synchronous version"""
@@ -1471,6 +1617,79 @@ class ImageWindow(QMainWindow):
         except Exception as e:
             print(f"❌ Classification save error: {e}")
 
+    def process_folder_with_yolo_sync(self, folder_path):
+        """Process all images in folder with YOLO and save classifications - synchronous version with UI updates"""
+        try:
+            print(f"🔍 Starting YOLO classification for folder: {os.path.basename(folder_path)}")
+
+            # Get all image files
+            image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp']
+            image_files = []
+
+            if os.path.exists(folder_path):
+                for filename in os.listdir(folder_path):
+                    if any(filename.lower().endswith(ext) for ext in image_extensions):
+                        image_files.append(os.path.join(folder_path, filename))
+
+            if not image_files:
+                print("No image files found for YOLO processing")
+                return
+
+            print(f"📸 Found {len(image_files)} images to classify")
+            
+            # Start processing indication in YOLO widget
+            self.yolo_results_widget.start_processing(len(image_files))
+
+            # Process each image with YOLO
+            classification_count = 0
+            for i, image_path in enumerate(image_files):
+                try:
+                    # Run YOLO classification
+                    results = model(image_path, verbose=False)
+
+                    # Get the best classification
+                    if results[0].boxes:
+                        # Get the detection with highest confidence
+                        best_box = max(results[0].boxes, key=lambda x: x.conf[0])
+                        cls_id = int(best_box.cls[0])
+                        confidence = float(best_box.conf[0])
+                        coco_label = model.names[cls_id]
+                        custom_tag = self.map_coco_label_to_custom_tag(coco_label)
+                    else:
+                        # No detections
+                        custom_tag = "unknown"
+                        confidence = 0.0
+
+                    # NEW: Updated YOLO results widget with each result
+                    self.yolo_results_widget.add_detection_result(image_path, custom_tag, confidence)
+
+                    # Save classification to database (synchronous)
+                    self.save_yolo_classification_sync(image_path, custom_tag, confidence, folder_path)
+
+                    classification_count += 1
+                    print(f"✅ Classified {os.path.basename(image_path)} as {custom_tag} (confidence: {confidence:.2f})")
+
+                    # Process events to keep UI responsive
+                    QApplication.processEvents()
+
+                except Exception as e:
+                    print(f"❌ YOLO error for {os.path.basename(image_path)}: {e}")
+                    # Save as unknown if YOLO fails
+                    self.yolo_results_widget.add_detection_result(image_path, "unknown", 0.0)
+                    self.save_yolo_classification_sync(image_path, "unknown", 0.0, folder_path)
+
+            # Finish processing indication
+            self.yolo_results_widget.finish_processing()
+            
+            print(f"✅ YOLO classification complete! Processed {classification_count} images")
+
+            # Update UI to show completion
+            if hasattr(self, 'tool_tips') and self.tool_tips:
+                self.tool_tips.setText(f"YOLO classified {classification_count} images from {os.path.basename(folder_path)}")
+
+        except Exception as e:
+            print(f"❌ Error in YOLO processing: {e}")
+
     def map_coco_label_to_custom_tag(self, label):
         """Map COCO labels to custom tags"""
         mapping = {
@@ -1484,10 +1703,13 @@ class ImageWindow(QMainWindow):
             "motorcycle": "vehicle",
             "airplane": "vehicle",
             "train": "vehicle",
+            "boat": "vehicle",
             "knife": "kitchenware",
             "fork": "kitchenware",
             "spoon": "kitchenware",
             "bowl": "kitchenware",
+            "cup": "kitchenware",
+            "wine glass": "kitchenware",
             "refrigerator": "appliance",
             "microwave": "appliance",
             "oven": "appliance",
@@ -1507,126 +1729,7 @@ class ImageWindow(QMainWindow):
             "bird": "animal",
             "giraffe": "animal"
         }
-        return mapping.get(label.lower(), "unknown")    
-
-    def filter_images_by_tag(self, target_tag):
-        """Filter and display images that match the selected custom tag."""
-        # Clear current grid
-        for i in reversed(range(self.grid_layout.count())):
-            widget = self.grid_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.setParent(None)
-
-        row = 0
-        col = 0
-        match_count = 0
-
-        for image_data in self.image_labels:
-            # image_data format: (label, pixmap, path, checkbox, tag)
-            if len(image_data) < 5:
-                continue  # Skip malformed entries
-
-            image_label, pixmap, image_path, checkbox, tag = image_data
-            if tag == target_tag:
-                try:
-                    image_widget = QWidget()
-                    layout = QVBoxLayout(image_widget)
-                    layout.setAlignment(Qt.AlignCenter)
-
-                    image_label = ClickableLabel(self)
-                    image_label.setPixmap(self.crop_center(pixmap))
-                    image_label.setScaledContents(True)
-                    image_label.setFixedSize(260, 260)
-                    layout.addWidget(image_label)
-
-                    image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
-                    image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
-
-                    self.grid_layout.addWidget(image_widget, row, col)
-                    col += 1
-                    match_count += 1
-                    if col == 3:
-                        col = 0
-                        row += 1
-                except Exception as e:
-                    print(f"Error displaying filtered image {image_path}: {e}")
-
-        if self.tool_tips:
-            self.tool_tips.setText(f"Filtered to {match_count} images under tag: {target_tag}")
-
-    def process_folder_with_yolo(self, folder_path):
-        """Process all images in folder with YOLO and save classifications to database"""
-        try:
-            print(f"🔍 Starting YOLO classification for folder: {os.path.basename(folder_path)}")
-            
-            # Get all image files
-            image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp']
-            image_files = []
-            
-            if os.path.exists(folder_path):
-                for filename in os.listdir(folder_path):
-                    if any(filename.lower().endswith(ext) for ext in image_extensions):
-                        image_files.append(os.path.join(folder_path, filename))
-            
-            if not image_files:
-                print("No image files found for YOLO processing")
-                return
-            
-            print(f"📸 Found {len(image_files)} images to classify")
-            
-            # Process each image with YOLO
-            classification_count = 0
-            for i, image_path in enumerate(image_files):
-                try:
-                    # Run YOLO classification
-                    results = model(image_path, verbose=False)
-                    
-                    # Get the best classification
-                    if results[0].boxes:
-                        # Get the detection with highest confidence
-                        best_box = max(results[0].boxes, key=lambda x: x.conf[0])
-                        cls_id = int(best_box.cls[0])
-                        confidence = float(best_box.conf[0])
-                        coco_label = model.names[cls_id]
-                        custom_tag = map_coco_label_to_custom_tag(coco_label)
-                    else:
-                        # No detections
-                        custom_tag = "unknown"
-                        confidence = 0.0
-                    
-                    # Save classification to database
-                    asyncio.create_task(self.save_yolo_classification(
-                        image_path, custom_tag, confidence, folder_path
-                    ))
-                    
-                    classification_count += 1
-                    print(f"✅ Classified {os.path.basename(image_path)} as {custom_tag} (confidence: {confidence:.2f})")
-                    
-                except Exception as e:
-                    print(f"❌ YOLO error for {os.path.basename(image_path)}: {e}")
-                    # Save as unknown if YOLO fails
-                    asyncio.create_task(self.save_yolo_classification(
-                        image_path, "unknown", 0.0, folder_path
-                    ))
-            
-            print(f"✅ YOLO classification complete! Processed {classification_count} images")
-            
-            # Update UI to show completion
-            if hasattr(self, 'tool_tips') and self.tool_tips:
-                self.tool_tips.setText(f"YOLO classified {classification_count} images from {os.path.basename(folder_path)}")
-                
-        except Exception as e:
-            print(f"❌ Error in YOLO processing: {e}")
-
-    async def save_yolo_classification(self, image_path, predicted_class, confidence, folder_source):
-        """Save YOLO classification result to database"""
-        try:
-            from db_utils import db_connect, insert_classification
-            db = await db_connect()
-            await insert_classification(db, image_path, predicted_class, confidence, folder_source)
-            await db.close()
-        except Exception as e:
-            print(f"❌ Database save error: {e}")
+        return mapping.get(label.lower(), "unknown")
 
 if __name__ == "__main__":
     
