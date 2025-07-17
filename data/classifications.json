@@ -187,5 +187,14 @@
     "predicted_class": "person",
     "confidence": 0.9175251722335815,
     "folder_source": "C:/Users/Theo-/OneDrive/Desktop/New folder"
+  },
+  {
+    "id": 22,
+    "timestamp": "2025-07-10T10:58:42.601400",
+    "image_path": "C:/Users/Theo-/OneDrive/Desktop/New folder\\360_F_383258331_D8imaEMl8Q3lf7EKU2Pi78Cn0R7KkW9o.jpg",
+    "filename": "360_F_383258331_D8imaEMl8Q3lf7EKU2Pi78Cn0R7KkW9o.jpg",
+    "predicted_class": "person",
+    "confidence": 0.9175251722335815,
+    "folder_source": "C:/Users/Theo-/OneDrive/Desktop/New folder"
   }
 ]
