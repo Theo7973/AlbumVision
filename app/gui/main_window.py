@@ -2,6 +2,8 @@
 import sys
 import os
 import shutil
+import cv2
+import numpy as np
 from functools import partial
 
 # Add the project root to Python path
@@ -17,6 +19,9 @@ from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupB
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import Qt, Signal, QEvent, QSize
 from pprint import pformat
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 # Import using absolute imports with error handling
 try:
@@ -157,6 +162,34 @@ except ImportError as e:
     print(f"Some imports failed: {e}")
     print("Running with limited functionality")
 
+class HistogramCanvas(FigureCanvas):
+    def __init__(self, parent=None):
+        self.fig = Figure(figsize=(3, 2), dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        super().__init__(self.fig)
+        self.setParent(parent)
+
+    def plot_rgb_histogram(self, image_path):
+        # Load and convert image to RGB
+        image = cv2.imread(image_path)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # Clear previous plot
+        self.ax.clear()
+
+        # Plot RGB channels
+        colors = ('red', 'green', 'blue')
+        for i, color in enumerate(colors):
+            hist = cv2.calcHist([image_rgb], [i], None, [256], [0, 256])
+            self.ax.plot(hist, color=color, label=f'{color.upper()}')
+        
+        self.ax.set_title('RGB Histogram', fontsize=8)
+        self.ax.set_xlabel('Pixel Value', fontsize=7)
+        self.ax.set_ylabel('Frequency', fontsize=7)
+        self.ax.tick_params(axis='both', labelsize=6)
+        self.ax.legend(fontsize=7)
+        self.ax.grid(True)
+        self.draw()
 
 class DragDropArea(QFrame):
     def __init__(self, parent=None):
@@ -426,6 +459,10 @@ class ImageWindow(QMainWindow):
    
         # Create a vertical layout for the text views
         info_layout = QVBoxLayout()
+
+        # Histogram canvas for displaying RGB histogram
+        self.canvas = HistogramCanvas(self)
+        info_layout.addWidget(self.canvas)
 
         # Create the first QLabel for the text view
         self.img_info = QLabel(self)
@@ -743,6 +780,9 @@ class ImageWindow(QMainWindow):
                     coco_label = model.names[cls_id]
                     custom_tag = map_coco_label_to_custom_tag(coco_label)
                     tags_detected.add(custom_tag)
+
+                # plot RGB histogram
+                self.canvas.plot_rgb_histogram(image_path)
 
             except Exception as model_error:
                 tags_detected = {"unknown"}
