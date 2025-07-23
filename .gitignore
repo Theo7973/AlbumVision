@@ -22,3 +22,7 @@ user_data/thumbnails/
 user_data/cache/ 
 .vscode/* 
 !.vscode/settings.json 
+dist.zip
+AlbumVision_Portable/AlbumVision.exe
+*.zip
+*.exe
