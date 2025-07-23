@@ -177,6 +177,24 @@ try:
                     return ""
         output_dialog = DummyOutputDialog()
         
+    try:
+        from app.gui.dialogs import resize_dialog
+    except ImportError:
+        class DummyResizeDialog:
+            class ResizeDialog(QDialog):
+                def __init__(self, parent=None, source_directory=None):
+                    super().__init__(parent)
+                    self.setWindowTitle("Resize Dialog")
+                    layout = QVBoxLayout()
+                    layout.addWidget(QLabel("Resize functionality not available"))
+                    ok_button = QPushButton("OK")
+                    ok_button.clicked.connect(self.accept)
+                    layout.addWidget(ok_button)
+                    self.setLayout(layout)
+                def get_output_folder(self):
+                    return ""
+        resize_dialog = DummyResizeDialog()
+
 except ImportError as e:
     print(f"Some imports failed: {e}")
     print("Running with limited functionality")
@@ -344,26 +362,24 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
         self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
-        
-        # ADD THESE 2 NEW LINES HERE:
         self.stats_bnt = QPushButton("Statistics", self)
         self.search_bnt = QPushButton("Search & Filter", self)
+        # Create the resize button
+        self.resize_bnt = QPushButton("Resize Images", self)
 
-        # install event filter on the import button  
         self.select_mode_btn = QPushButton("Select Images", self)
         self.select_mode_btn.setCheckable(True)
         self.select_mode_btn.clicked.connect(self.toggle_selection_mode)
-       
-         # install event filter on the import button
+
         self.import_bnt.installEventFilter(self)
         self.export_bnt.installEventFilter(self)
         self.checkDup_bnt.installEventFilter(self)
         self.changeTag_bnt.installEventFilter(self)
         self.outputPath_bnt.installEventFilter(self)
-        
-        # ADD THESE 2 NEW LINES HERE:
         self.stats_bnt.installEventFilter(self)
         self.search_bnt.installEventFilter(self)
+        # Install event filter for resize button
+        self.resize_bnt.installEventFilter(self)
 
         # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
@@ -372,9 +388,10 @@ class ImageWindow(QMainWindow):
         func_button_layout.addWidget(self.changeTag_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
         
-        # ADD THESE 2 NEW LINES HERE:
+      
         func_button_layout.addWidget(self.stats_bnt)
         func_button_layout.addWidget(self.search_bnt)
+        func_button_layout.addWidget(self.resize_bnt)
         func_button_layout.addWidget(self.select_mode_btn)
         self.delete_selected_btn = QPushButton("Delete Selected", self)
         self.delete_selected_btn.clicked.connect(self.delete_selected_images)
@@ -382,7 +399,7 @@ class ImageWindow(QMainWindow):
         left_layout.addWidget(self.delete_selected_btn)
 
 
-        # Add the button layout to the left layout
+        
         left_layout.addLayout(func_button_layout)
 
         # Create a QGroupBox for the tag buttons
@@ -541,10 +558,10 @@ class ImageWindow(QMainWindow):
         self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
         self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
         self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
-        
-       
         self.stats_bnt.clicked.connect(self.open_stats_dashboard)
         self.search_bnt.clicked.connect(self.open_search_filter)
+        # Connect signal for resize button
+        self.resize_bnt.clicked.connect(self.open_resize_dialog)
 
     
         # Set the main widget as the central widget
@@ -1190,6 +1207,8 @@ class ImageWindow(QMainWindow):
                     self.tool_tips.setText("View detailed statistics about your image collection")
                 elif hasattr(self, 'search_bnt') and obj == self.search_bnt:
                     self.tool_tips.setText("Search and filter images by name, size, date, and category")
+                elif hasattr(self, 'resize_bnt') and obj == self.resize_bnt:
+                    self.tool_tips.setText("Resize images individually or in batch with various options")
                     
                 elif hasattr(self, 'small_size_btn') and obj == self.small_size_btn:
                     self.tool_tips.setText("Display images in small size (5x5 grid)")
@@ -1730,6 +1749,20 @@ class ImageWindow(QMainWindow):
             "giraffe": "animal"
         }
         return mapping.get(label.lower(), "unknown")
+
+    def open_resize_dialog(self):
+        """Open the Resize Images dialog"""
+        try:
+            dialog = resize_dialog.ResizeDialog(self, self.image_dir)
+            if dialog.exec():  # If the user completes the resize
+                output_folder = dialog.get_output_folder()
+                if output_folder and hasattr(self, 'tool_tips') and self.tool_tips:
+                    self.tool_tips.setText(f"Images resized to: {os.path.basename(output_folder)}")
+        except Exception as e:
+            print(f"Resize dialog not available: {e}")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "Feature Not Available", 
+                           "Resize functionality requires PIL/Pillow library.\nInstall with: pip install Pillow")
 
 if __name__ == "__main__":
     
