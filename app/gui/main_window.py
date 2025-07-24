@@ -1,3 +1,18 @@
+import multiprocessing
+import os
+
+
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+
+
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable CUDA to prevent GPU processes
+
+
 import sys
 import os
 import shutil
@@ -337,6 +352,8 @@ class ImageWindow(QMainWindow):
         self.selected_images = []
         self.TAG = "cat"
         
+        # Initialize display size
+        self.display_size = "Medium"
 
         # Set the window icon
         icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.svg')
@@ -717,17 +734,24 @@ class ImageWindow(QMainWindow):
                 self, "Deleted", f"Deleted {deleted_count} image(s) successfully."
             )           
 
+    def filter_images_by_tag(self, target_tag):
+        self.TAG = target_tag
+        self.update_image_sizes(self.display_size, target_tag)
+
     def update_image_sizes(self, size, target_tag):
         """Update the size of the images and grid layout based on the selected size."""
         if size == "Small":
-            new_size = 160  # Small size
+            new_size = 135  # Small size
             max_columns = 5  # 5 columns
+            self.display_size = "Small"
         elif size == "Medium":
             new_size = 260  # Medium size (default)
             max_columns = 3  # 3 columns
+            self.display_size = "Medium"
         elif size == "Large":
             new_size = 400  # Large size
             max_columns = 2  # 2 columns
+            self.display_size = "Large"
 
         # Clear the current grid layout
         for i in reversed(range(self.grid_layout.count())):
@@ -736,8 +760,7 @@ class ImageWindow(QMainWindow):
                 widget.setParent(None)
 
         # Re-add images to the grid layout with the new size and grid configuration
-        """Filter and display images that match the selected custom tag."""
-        # Clear current grid
+        # Filter and display images that match the selected custom tag.
         for i in reversed(range(self.grid_layout.count())):
             widget = self.grid_layout.itemAt(i).widget()
             if widget is not None:
@@ -1466,7 +1489,7 @@ class ImageWindow(QMainWindow):
                         custom_tag = "unknown"
                         confidence = 0.0
 
-                    # NEW: Update YOLO results widget with each result
+                    # NEW: Updated YOLO results widget with each result
                     self.yolo_results_widget.add_detection_result(image_path, custom_tag, confidence)
 
                     # Save classification to database (synchronous)
@@ -1764,18 +1787,3 @@ class ImageWindow(QMainWindow):
             QMessageBox.information(self, "Feature Not Available", 
                            "Resize functionality requires PIL/Pillow library.\nInstall with: pip install Pillow")
 
-if __name__ == "__main__":
-    
-    # Create the application instance
-    app = QApplication(sys.argv)
-
-    # Create the main window instance with a sample image directory
-    image_directory = r".\data\test_images"  # Replace with your directory path
-    window = ImageWindow(image_directory)
-
-    # Set the window title and show it
-    window.setWindowTitle("Album Vision+")
-    window.show()
-
-    # Start the application event loop
-    sys.exit(app.exec())
