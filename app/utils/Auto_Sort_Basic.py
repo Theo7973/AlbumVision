@@ -1,12 +1,52 @@
 import os
 from collections import defaultdict
 from ultralytics import YOLO
+from app.utils.file_utils import map_coco_label_to_custom_tag
+
+def map_coco_label_to_custom_tag(label):
+    mapping = {
+        "person": "person",
+        "cat": "cat",
+        "dog": "dog",
+        "car": "vehicle",
+        "bus": "vehicle",
+        "truck": "vehicle",
+        "bicycle": "vehicle",
+        "motorcycle": "vehicle",
+        "airplane": "vehicle",
+        "train": "vehicle",
+        "knife": "kitchenware",
+        "fork": "kitchenware",
+        "spoon": "kitchenware",
+        "bowl": "kitchenware",
+        "refrigerator": "appliance",
+        "microwave": "appliance",
+        "oven": "appliance",
+        "toaster": "appliance",
+        "tv": "entertainment device",
+        "laptop": "entertainment device",
+        "cell phone": "entertainment device",
+        "mouse": "entertainment device",
+        "keyboard": "entertainment device",
+        "remote": "entertainment device",
+        "bear": "animal",
+        "zebra": "animal",
+        "elephant": "animal",
+        "sheep": "animal",
+        "cow": "animal",
+        "horse": "animal",
+        "bird": "animal",
+        "giraffe": "animal",
+        "dog": "dog",
+        "cat": "cat"
+    }
+    return mapping.get(label.lower(), "unknown")
 
 #YOLOv8 model
 model = YOLO("yolov8n.pt")
 
 #Set folder path
-input_path = r"C:\Users\austi\OneDrive\Desktop\-BIG BAD FINAL PROJECT\REPO\AlbumVision\data\test_images"
+input_path = r"C:\Users\austi\OneDrive\Desktop\REPO\AlbumVision\data\test_images"
 image_extensions = [".jpg", ".jpeg", ".png", ".webp"]
 
 #Store results
@@ -16,14 +56,15 @@ def process_image(image_path):
     filename = os.path.basename(image_path)
     results = model(image_path, verbose=False)
 
-    labels = set()
+    custom_labels = set()
     for box in results[0].boxes:
         cls_id = int(box.cls[0])
-        label = model.names[cls_id]
-        labels.add(label)
+        coco_label = model.names[cls_id]
+        custom_tag = map_coco_label_to_custom_tag(coco_label)
+        custom_labels.add(custom_tag)
 
-    for label in labels:
-        sorted_images[label].append(filename)
+    for tag in custom_labels:
+        sorted_images[tag].append(filename)
 
 #Confirm that it is a folder
 if os.path.isdir(input_path):
