@@ -164,10 +164,29 @@ except ImportError as e:
 
 class HistogramCanvas(FigureCanvas):
     def __init__(self, parent=None):
-        self.fig = Figure(figsize=(3, 2), dpi=100)
+        self.fig = Figure(figsize=(4, 2.5), dpi=100)
         self.ax = self.fig.add_subplot(111)
         super().__init__(self.fig)
         self.setParent(parent)
+
+        # --- Set dark theme for the histogram initially ---
+        self.fig.patch.set_facecolor('#232629')  # Figure background
+        self.ax.set_facecolor('#232629')         # Axes background
+        self.ax.tick_params(axis='both', colors='white', labelsize=6)
+        self.ax.spines['bottom'].set_color('white')
+        self.ax.spines['top'].set_color('white')
+        self.ax.spines['left'].set_color('white')
+        self.ax.spines['right'].set_color('white')
+        self.ax.xaxis.label.set_color('white')
+        self.ax.yaxis.label.set_color('white')
+        self.ax.title.set_color('white')
+        self.ax.set_title('RGB Histogram', fontsize=8)
+        self.ax.set_xlabel('Pixel Value', fontsize=6)
+        self.ax.set_ylabel('Frequency', fontsize=6)
+        self.ax.grid(True, color='#444444')
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(left=0.1, right=0.98, top=0.9, bottom=0.15)
+        self.draw()
 
     def plot_rgb_histogram(self, image_path):
         # Load and convert image to RGB
@@ -177,19 +196,32 @@ class HistogramCanvas(FigureCanvas):
         # Clear previous plot
         self.ax.clear()
 
+        # --- Set dark theme for the histogram (again, for redraw) ---
+        self.fig.patch.set_facecolor('#232629')
+        self.ax.set_facecolor('#232629')
+        self.ax.tick_params(axis='both', colors='white', labelsize=6)
+        self.ax.spines['bottom'].set_color('white')
+        self.ax.spines['top'].set_color('white')
+        self.ax.spines['left'].set_color('white')
+        self.ax.spines['right'].set_color('white')
+        self.ax.xaxis.label.set_color('white')
+        self.ax.yaxis.label.set_color('white')
+        self.ax.title.set_color('white')
+        self.ax.set_title('RGB Histogram', fontsize=8)
+        self.ax.set_xlabel('Pixel Value', fontsize=6)
+        self.ax.set_ylabel('Frequency', fontsize=6)
+        self.ax.grid(True, color='#444444')
+        # -----------------------------------------------------------
+
         # Plot RGB channels
         colors = ('red', 'green', 'blue')
         for i, color in enumerate(colors):
             hist = cv2.calcHist([image_rgb], [i], None, [256], [0, 256])
-            self.ax.plot(hist, color=color, label=f'{color.upper()}')
-        
-        self.ax.set_title('RGB Histogram', fontsize=8)
-        self.ax.set_xlabel('Pixel Value', fontsize=7)
-        self.ax.set_ylabel('Frequency', fontsize=7)
-        self.ax.tick_params(axis='both', labelsize=6)
-        self.ax.legend(fontsize=7)
-        self.ax.grid(True)
+            self.ax.plot(hist, color=color)
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(left=0.18, right=0.98, top=0.9, bottom=0.15)
         self.draw()
+        
 
 class DragDropArea(QFrame):
     def __init__(self, parent=None):
