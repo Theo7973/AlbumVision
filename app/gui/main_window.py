@@ -483,20 +483,7 @@ class ImageWindow(QMainWindow):
 
         self.load_images_from_directory(self.image_dir)
         
-    def update_selected_images(self, state):
-        checkbox = self.sender()
-        file_path = checkbox.property("file_path")
-
-        if file_path is None:
-            print("Checkbox missing file_path property")
-            return
-
-        if state == Qt.Checked:
-            if file_path not in self.selected_images:
-                self.selected_images.append(file_path)
-        else:
-            if file_path in self.selected_images:
-                self.selected_images.remove(file_path) 
+    
                 
 
     def load_images_from_directory(self, directory):
@@ -578,36 +565,51 @@ class ImageWindow(QMainWindow):
         elif self.tool_tips:
             self.tool_tips.setText("No images found in the selected directory")
             
+            
+    def update_selected_images(self, state=None):
+        self.selected_images.clear()
+        for label_data in self.image_labels:
+            if len(label_data) >= 4:
+                checkbox = label_data[3]
+                if isinstance(checkbox, QCheckBox) and checkbox.isChecked():
+                    file_path = checkbox.property("file_path")
+                    if file_path:
+                        self.selected_images.append(file_path)
+
+        print(f"Selected images: {self.selected_images}")      
+            
           
                 
     def delete_selected_images(self):
-        """Delete all selected images from disk and refresh the grid."""
         if not self.selected_images:
             QMessageBox.information(self, "No Selection", "No images selected for deletion.")
             return
 
         confirm = QMessageBox.question(
-            self,
-            "Confirm Deletion",
+            self, "Confirm Deletion",
             f"Are you sure you want to delete {len(self.selected_images)} selected image(s)?",
-            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No
         )
 
         if confirm == QMessageBox.Yes:
             deleted_count = 0
-            for path in self.selected_images:
+            for image_path in self.selected_images:
                 try:
-                    os.remove(path)
-                    deleted_count += 1
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+                        deleted_count += 1
                 except Exception as e:
-                    print(f"Failed to delete {path}: {e}")
+                    print(f"Failed to delete {image_path}: {e}")
 
-            self.selected_images = []
+            # Clear the selection list
+            self.selected_images.clear()
+
+            # Reload grid
             self.load_images_from_directory(self.image_dir)
 
-            QMessageBox.information(
-                self, "Deleted", f"Deleted {deleted_count} image(s) successfully."
-            )           
+            # Show result
+            QMessageBox.information(self, "Deleted", f"{deleted_count} image(s) deleted.")
+                       
 
     def update_image_sizes(self, size):
         """Update the size of the images and grid layout based on the selected size."""
