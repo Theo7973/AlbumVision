@@ -32,7 +32,7 @@ class OutputPathDialog(QDialog):
         if self.current_path:
             self.current_label = QLabel(f"Currently set to: {self.current_path}")
             self.current_label.setWordWrap(True)
-            self.current_label.setStyleSheet("font-weight: bold; color: #006400;")
+            self.current_label.setStyleSheet("font-weight: bold; color: #02c754;")
         else:
             self.current_label = QLabel("No output path currently set")
             self.current_label.setStyleSheet("font-weight: bold; color: #CC0000;")

@@ -122,23 +122,6 @@ try:
                     return ""
         export_dialog = DummyExportDialog()
     
-    try:
-        from app.gui.dialogs import change_tag_dialog
-    except ImportError:
-        class DummyChangeTagDialog:
-            class ChangeTagDialog(QDialog):
-                def __init__(self, parent=None):
-                    super().__init__(parent)
-                    self.setWindowTitle("Change Tag Dialog")
-                    layout = QVBoxLayout()
-                    layout.addWidget(QLabel("Change tag functionality not available"))
-                    ok_button = QPushButton("OK")
-                    ok_button.clicked.connect(self.accept)
-                    layout.addWidget(ok_button)
-                    self.setLayout(layout)
-                def get_output_path(self):
-                    return ""
-        change_tag_dialog = DummyChangeTagDialog()
     
     try:
         from app.gui.dialogs import output_dialog
@@ -342,7 +325,6 @@ class ImageWindow(QMainWindow):
         self.import_bnt = QPushButton("Import", self)
         self.export_bnt = QPushButton("Export", self)
         self.checkDup_bnt = QPushButton("Check Duplicate", self)
-        self.changeTag_bnt = QPushButton("Change Tag", self)
         self.outputPath_bnt = QPushButton("Output Path", self)
         self.select_mode_btn = QPushButton("Select Images", self)
         self.select_mode_btn.setCheckable(True)
@@ -352,14 +334,12 @@ class ImageWindow(QMainWindow):
         self.import_bnt.installEventFilter(self)
         self.export_bnt.installEventFilter(self)
         self.checkDup_bnt.installEventFilter(self)
-        self.changeTag_bnt.installEventFilter(self)
         self.outputPath_bnt.installEventFilter(self)
 
         # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
         func_button_layout.addWidget(self.export_bnt)
         func_button_layout.addWidget(self.checkDup_bnt)
-        func_button_layout.addWidget(self.changeTag_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
         func_button_layout.addWidget(self.select_mode_btn)
         self.delete_selected_btn = QPushButton("Delete Selected", self)
@@ -393,7 +373,7 @@ class ImageWindow(QMainWindow):
 
         tab_btn_layout = QHBoxLayout()
 
-        btn_name_list = ['Animal', 'Cat', 'Dog', 'Person', 'Vehicle', 'Kitchenware', 'Appliance', 'Entertainment\n Device']
+        btn_name_list = ['All', 'Animal', 'Cat', 'Dog', 'Person', 'Vehicle', 'Kitchenware', 'Appliance', 'Entertainment\n Device']
         sorted_list = sorted(btn_name_list)  # Sorts alphabetically
         sorted_list.append('Unknown')
         for name in sorted_list:
@@ -525,7 +505,6 @@ class ImageWindow(QMainWindow):
         self.import_bnt.clicked.connect(self.open_import_dialog)
         self.export_bnt.clicked.connect(self.open_export_dialog)
         self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
-        self.changeTag_bnt.clicked.connect(self.open_change_tag_dialog)
         self.outputPath_bnt.clicked.connect(self.open_output_path_dialog)
     
         # Set the main widget as the central widget
@@ -719,7 +698,30 @@ class ImageWindow(QMainWindow):
                 continue  # Skip malformed entries
 
             image_label, pixmap, image_path, checkbox, tag = image_data
-            if tag == target_tag:
+            if target_tag == "all":
+                try:
+                    image_widget = QWidget()
+                    layout = QVBoxLayout(image_widget)
+                    layout.setAlignment(Qt.AlignCenter)
+
+                    image_label = ClickableLabel(self)
+                    image_label.setPixmap(self.crop_center(pixmap))
+                    image_label.setScaledContents(True)
+                    image_label.setFixedSize(new_size, new_size)
+                    layout.addWidget(image_label)
+
+                    image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
+                    image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
+
+                    self.grid_layout.addWidget(image_widget, row, col)
+                    col += 1
+                    match_count += 1
+                    if col == max_columns:
+                        col = 0
+                        row += 1
+                except Exception as e:
+                    print(f"Error displaying filtered image {image_path}: {e}")
+            elif tag == target_tag:
                 try:
                     image_widget = QWidget()
                     layout = QVBoxLayout(image_widget)
@@ -950,17 +952,6 @@ class ImageWindow(QMainWindow):
         except Exception as e:
             QMessageBox.information(self, "Export", f"Export functionality: {str(e)}")
 
-    def open_change_tag_dialog(self):
-        """Open the Change Tag dialog."""
-        try:
-            dialog = change_tag_dialog.ChangeTagDialog(self)
-            if dialog.exec():  # If the user clicks "OK"
-                output_path = dialog.get_output_path()
-                if self.tool_tips:
-                    self.tool_tips.setText("Tag changes applied")
-        except Exception as e:
-            QMessageBox.information(self, "Change Tag", f"Change tag functionality: {str(e)}")
-
     def open_output_path_dialog(self):
         """Open the Output Path dialog with enhanced functionality."""
         try:
@@ -1077,8 +1068,6 @@ class ImageWindow(QMainWindow):
                     self.tool_tips.setText("Export sorted images to category folders with quality filtering")
                 elif hasattr(self, 'checkDup_bnt') and obj == self.checkDup_bnt:
                     self.tool_tips.setText("Check for duplicate images and remove them")
-                elif hasattr(self, 'changeTag_bnt') and obj == self.changeTag_bnt:
-                    self.tool_tips.setText("Change tags for selected images")
                 elif hasattr(self, 'outputPath_bnt') and obj == self.outputPath_bnt:
                     try:
                         current_path = self.path_settings.get_output_path()

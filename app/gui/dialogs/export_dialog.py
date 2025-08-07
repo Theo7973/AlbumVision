@@ -9,6 +9,9 @@ from PySide6.QtWidgets import (QDialog, QLabel, QVBoxLayout, QPushButton, QHBoxL
 from PySide6.QtCore import Qt, QThread, Signal
 import sys
 import os
+import shutil
+from ultralytics import YOLO
+model = YOLO("yolov8n.pt")
 
 # Add project root to path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -28,15 +31,6 @@ except ImportError as e:
             os.makedirs(folder_path, exist_ok=True)
         return [os.path.join(output_path, cat) for cat in categories]
     
-    def check_image_quality(image_path, threshold=150):
-        try:
-            size = os.path.getsize(image_path)
-            if size > 500000:
-                return "high", 85.0, (1920, 1080)
-            else:
-                return "low", 45.0, (640, 480)
-        except:
-            return "error", 0, (0, 0)
     
     class DummyGetAllFiles:
         @staticmethod
@@ -54,7 +48,7 @@ except ImportError as e:
     
     class PathSettings:
         def __init__(self):
-            self.json_dir = r"C:\Users\Theo-\OneDrive\Documents\GitHub\AlbumVision\data\output_path"
+            self.json_dir = os.path.join(os.path.expanduser("~"), "Desktop")
             os.makedirs(self.json_dir, exist_ok=True)
             self.settings_file = os.path.join(self.json_dir, 'settings.json')
             self.output_path = ""
@@ -136,88 +130,122 @@ class ExportWorker(QThread):
     finished = Signal(dict)
     error = Signal(str)
     
-    def __init__(self, source_dir, output_path, categories, quality_check=True):
+    def __init__(self, source_dir, output_path, categories):
         super().__init__()
         self.source_dir = source_dir
         self.output_path = output_path
         self.categories = categories
-        self.quality_check = quality_check
+
+
+   
         
     def run(self):
-        """Run the export process in a separate thread"""
+        """Run the export process in a separate thread, sorting images by YOLO-detected category."""
         try:
             # Get all image files
             all_files = get_all_files_in_directory.get_all_files_in_directory(self.source_dir)
             image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'))]
-            
+
             if not image_files:
                 self.error.emit("No image files found in the source directory.")
                 return
-            
+
             self.status.emit(f"Found {len(image_files)} images to process...")
-            
-            # Create category folders
-            folder_paths = create_output_folders(self.categories, self.output_path)
-            self.status.emit(f"Created {len(folder_paths)} category folders...")
-            
-            # Process images
+
+            # Mapping from YOLO/coco label to your custom category
+            mapping = {
+                "person": "Person",
+                "cat": "Cat",
+                "dog": "Dog",
+                "car": "Vehicle",
+                "bus": "Vehicle",
+                "truck": "Vehicle",
+                "bicycle": "Vehicle",
+                "motorcycle": "Vehicle",
+                "airplane": "Vehicle",
+                "train": "Vehicle",
+                "knife": "Kitchenware",
+                "fork": "Kitchenware",
+                "spoon": "Kitchenware",
+                "bowl": "Kitchenware",
+                "refrigerator": "Appliance",
+                "microwave": "Appliance",
+                "oven": "Appliance",
+                "toaster": "Appliance",
+                "tv": "Entertainment_Device",
+                "laptop": "Entertainment_Device",
+                "cell phone": "Entertainment_Device",
+                "mouse": "Entertainment_Device",
+                "keyboard": "Entertainment_Device",
+                "remote": "Entertainment_Device",
+                "bear": "Animal",
+                "zebra": "Animal",
+                "elephant": "Animal",
+                "sheep": "Animal",
+                "cow": "Animal",
+                "horse": "Animal",
+                "bird": "Animal",
+                "giraffe": "Animal"
+            }
+
+            def map_coco_label_to_custom_tag(label):
+                return mapping.get(label.lower(), "Unknown")
+
             stats = {
                 'processed': 0,
-                'high_quality': 0,
-                'low_quality': 0,
                 'errors': 0,
                 'by_category': {}
             }
-            
+
             for i, img_path in enumerate(image_files):
                 self.status.emit(f"Processing {os.path.basename(img_path)}...")
-                
-                # Check image quality if enabled
-                if self.quality_check:
-                    quality, score, dimensions = check_image_quality(img_path)
-                    if quality == "error":
-                        stats['errors'] += 1
-                        continue
-                else:
-                    quality = "high"  # Default to high if not checking
-                
-                # Determine target folder (for now, use Unknown category)
-                # In a full implementation, this would use YOLO11 detection
-                target_category = "Unknown"
-                
-                # Create subfolder structure: Category/Quality
-                if quality == "high":
-                    target_folder = os.path.join(self.output_path, target_category, "High_Quality")
-                    stats['high_quality'] += 1
-                else:
-                    target_folder = os.path.join(self.output_path, target_category, "Low_Quality")
-                    stats['low_quality'] += 1
-                
+
+                # --- YOLO detection ---
+                try:
+                    results = model(img_path, verbose=False)
+                    detected_labels = []
+                    if results and results[0].boxes:
+                        for box in results[0].boxes:
+                            cls_id = int(box.cls[0])
+                            coco_label = model.names[cls_id]
+                            mapped = map_coco_label_to_custom_tag(coco_label)
+                            if mapped != "Unknown":
+                                detected_labels.append(mapped)
+                    # If more than one known item detected, use the first one (ignore Unknown)
+                    if detected_labels:
+                        target_category = detected_labels[0]
+                    else:
+                        target_category = "Unknown"
+                except Exception as e:
+                    print(f"YOLO error on {img_path}: {e}")
+                    target_category = "Unknown"
+
                 # Update category stats
                 if target_category not in stats['by_category']:
                     stats['by_category'][target_category] = 0
                 stats['by_category'][target_category] += 1
-                
+
                 # Create target folder if it doesn't exist
+                target_folder = os.path.join(self.output_path, target_category)
                 os.makedirs(target_folder, exist_ok=True)
-                
+
                 # Copy the image to the target folder
                 filename = os.path.basename(img_path)
                 target_path = os.path.join(target_folder, filename)
-                
+
                 try:
                     shutil.copy2(img_path, target_path)
                     stats['processed'] += 1
                 except Exception as e:
                     print(f"Error copying {img_path}: {e}")
                     stats['errors'] += 1
-                
+
                 # Update progress
                 progress_percent = int((i + 1) / len(image_files) * 100)
                 self.progress.emit(progress_percent)
-            
+
             self.finished.emit(stats)
-            
+
         except Exception as e:
             self.error.emit(str(e))
 
@@ -281,22 +309,6 @@ class ExportDialog(QDialog):
         self.folder_preview = FolderPreviewWidget()
         layout.addWidget(self.folder_preview)
         
-        # Export options
-        options_group = QGroupBox("Export Options")
-        options_layout = QVBoxLayout()
-        
-        self.quality_check = QCheckBox("Enable quality filtering")
-        self.quality_check.setChecked(True)
-        self.quality_check.setToolTip("Separate images into High_Quality and Low_Quality subfolders")
-        options_layout.addWidget(self.quality_check)
-        
-        self.create_subfolders = QCheckBox("Create quality subfolders")
-        self.create_subfolders.setChecked(True)
-        self.create_subfolders.setToolTip("Create High_Quality and Low_Quality subfolders within each category")
-        options_layout.addWidget(self.create_subfolders)
-        
-        options_group.setLayout(options_layout)
-        layout.addWidget(options_group)
 
         # Progress section (initially hidden)
         self.progress_group = QGroupBox("Export Progress")
@@ -429,8 +441,7 @@ class ExportDialog(QDialog):
         self.export_worker = ExportWorker(
             self.source_directory,
             self.output_path,
-            categories,
-            self.quality_check.isChecked()
+            categories
         )
         
         # Connect worker signals
@@ -458,8 +469,6 @@ class ExportDialog(QDialog):
         # Show completion message
         message = f"Export completed successfully!\n\n"
         message += f"Processed: {stats['processed']} images\n"
-        message += f"High quality: {stats['high_quality']}\n"
-        message += f"Low quality: {stats['low_quality']}\n"
         if stats['errors'] > 0:
             message += f"Errors: {stats['errors']}\n"
         message += f"\nExported to: {self.output_path}"
@@ -500,7 +509,7 @@ class ExportDialog(QDialog):
     def save_export_config(self, stats):
         """Save export configuration and statistics to JSON"""
         try:
-            json_dir = r"C:\Users\Theo-\OneDrive\Documents\GitHub\AlbumVision\data\output_path"
+            json_dir = os.path.join(os.path.expanduser("~"), "Desktop")
             os.makedirs(json_dir, exist_ok=True)
             config_path = os.path.join(json_dir, 'export_log.json')
             
@@ -509,7 +518,6 @@ class ExportDialog(QDialog):
                 "source_directory": self.source_directory,
                 "output_path": self.output_path,
                 "categories": self.folder_preview.get_categories(),
-                "quality_check_enabled": self.quality_check.isChecked(),
                 "statistics": stats
             }
             
