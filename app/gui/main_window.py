@@ -536,21 +536,17 @@ class ImageWindow(QMainWindow):
 
         self.load_images_from_directory(self.image_dir)
         
-    def update_selected_images(self, state):
-        checkbox = self.sender()
-        file_path = checkbox.property("file_path")
+    def update_selected_images(self, state=None):
+        self.selected_images.clear()
+        for label_data in self.image_labels:
+            if len(label_data) >= 4:
+                checkbox = label_data[3]
+                if isinstance(checkbox, QCheckBox) and checkbox.isChecked():
+                    file_path = checkbox.property("file_path")
+                    if file_path:
+                        self.selected_images.append(file_path)
 
-        if file_path is None:
-            print("Checkbox missing file_path property")
-            return
-
-        if state == Qt.Checked:
-            if file_path not in self.selected_images:
-                self.selected_images.append(file_path)
-        else:
-            if file_path in self.selected_images:
-                self.selected_images.remove(file_path) 
-        print(f"Selected images: {len(self.selected_images)}")
+        print(f"Selected images: {self.selected_images}") 
                 
     def load_images_from_directory(self, directory):
         """Load images from a directory and populate the grid with optional checkboxes."""
