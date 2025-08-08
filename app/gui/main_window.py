@@ -15,9 +15,9 @@ from app.utils.file_utils import map_coco_label_to_custom_tag
 
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
-                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox)
-from PySide6.QtGui import QPixmap, QIcon
-from PySide6.QtCore import Qt, Signal, QEvent, QSize
+                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen)
+from PySide6.QtGui import QPixmap, QIcon, QMovie, QGuiApplication
+from PySide6.QtCore import Qt, Signal, QEvent, QSize, QTimer, QPropertyAnimation
 from pprint import pformat
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -1243,6 +1243,43 @@ class ImageWindow(QMainWindow):
     def filter_images_by_tag(self, target_tag):
         self.TAG = target_tag
         self.update_image_sizes(self.display_size, target_tag)
+
+# App intro class for Album Vision+
+class IntroSplash(QSplashScreen):
+    """
+    Frameless splash screen that can show a static PNG/SVG
+    or play an animated GIF via QMovie.  Call .start() to
+    fade it out automatically.
+    """
+    def __init__(self, still_path: str, gif_path: str | None = None):
+        super().__init__(QPixmap(still_path))
+        self.setWindowFlag(Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        # Optional animated GIF in the center
+        if gif_path and os.path.exists(gif_path):
+            self.movie_lbl = QLabel(self)
+            self.movie_lbl.setAlignment(Qt.AlignCenter)
+            self.movie_lbl.setGeometry(self.rect())
+            self.movie = QMovie(gif_path)
+            self.movie_lbl.setMovie(self.movie)
+            self.movie.start()
+
+    def start(self, duration_ms: int = 1800):
+        """Show now, then fade out after *duration_ms*."""
+        self.show()
+        QGuiApplication.processEvents()          # paint immediately
+        QTimer.singleShot(duration_ms, self._fade_out)
+
+    def _fade_out(self):
+        effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(effect)
+        anim = QPropertyAnimation(effect, b"opacity", self)
+        anim.setDuration(600)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+        anim.finished.connect(self.close)
+        anim.start()
 
 if __name__ == "__main__":
     
