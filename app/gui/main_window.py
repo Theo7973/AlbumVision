@@ -15,7 +15,7 @@ from app.utils.file_utils import map_coco_label_to_custom_tag
 
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
-                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen)
+                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen, QGraphicsOpacityEffect)
 from PySide6.QtGui import QPixmap, QIcon, QMovie, QGuiApplication
 from PySide6.QtCore import Qt, Signal, QEvent, QSize, QTimer, QPropertyAnimation
 from pprint import pformat
@@ -285,11 +285,11 @@ class ClickableLabel(QLabel):
 
 
 class ImageWindow(QMainWindow):
-    def __init__(self, image_dir):
+    def __init__(self):
         super().__init__()
         self.setWindowTitle("Album Vision+ - Smart Image Organization")
         self.setFixedSize(1200, 800)  # Set the window to a fixed size
-        self.image_dir = image_dir
+        self.image_dir = ""
         self.path_settings = PathSettings()  # Initialize path settings
 
         # Initialize essential attributes early
@@ -447,7 +447,7 @@ class ImageWindow(QMainWindow):
         self.grid_layout = QGridLayout(self.container_widget)
 
         # Load images from the initial directory
-        self.load_images_from_directory(image_dir)
+        # self.load_images_from_directory(image_dir)
 
         # Create a QScrollArea and set the container widget as its widget
         self.scroll_area = QScrollArea(self)
@@ -1282,17 +1282,49 @@ class IntroSplash(QSplashScreen):
         anim.start()
 
 if __name__ == "__main__":
-    
-    # Create the application instance
     app = QApplication(sys.argv)
+    
+    #App Intro Execution
+    logo_path = os.path.join(os.path.dirname(__file__),
+                             "resources", "images", "albumvision_logo.png")
+    gif_path  = os.path.join(os.path.dirname(__file__),
+                             "resources", "animations", "intro.gif")
+    splash = IntroSplash(logo_path, gif_path if os.path.exists(gif_path) else None)
+    splash.showMessage("Album Vision+", Qt.AlignBottom | Qt.AlignHCenter, Qt.white)
+    print("LOGO PATH:", logo_path)
+    print("Exists?   ", os.path.exists(logo_path))
+    splash.start(duration_ms=2400)   # show ~2.4 s total
 
-    # Create the main window instance with a sample image directory
-    image_directory = r".\data\test_images"  # Replace with your directory path
-    window = ImageWindow(image_directory)
+    # Default test directory
+    test_dir = os.path.join(os.getcwd(), "data", "test_images")
+    if not os.path.exists(test_dir):
+        os.makedirs(test_dir, exist_ok=True)
+        print(f"Created test directory: {test_dir}")
+        print("Add some image files to this directory to test the application.")
+    
+    # Set application properties
+    app.setApplicationName("Album Vision+")
+    app.setApplicationVersion("1.0")
+    app.setOrganizationName("AlbumVision")
+    
+    try:
+        window = ImageWindow()
 
-    # Set the window title and show it
-    window.setWindowTitle("Album Vision+")
-    window.show()
+        def show_main():
+            window.show()
+            splash.finish(window)
+            splash.deleteLater()
 
-    # Start the application event loop
-    sys.exit(app.exec())
+        QTimer.singleShot(2400, show_main)  # Show main window after splash
+        
+        print("AlbumVision+ started successfully!")
+        print(f"Test directory: {test_dir}")
+        print("You can drag and drop folders containing images to import them.")
+        
+        sys.exit(app.exec())
+    except Exception as e:
+        print(f"Error starting application: {e}")
+        import traceback
+        traceback.print_exc()
+        QMessageBox.critical(None, "Startup Error", f"Failed to start AlbumVision+:\n{str(e)}")
+        sys.exit(1)
