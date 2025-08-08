@@ -299,7 +299,7 @@ class ImageWindow(QMainWindow):
         self.button_group = QButtonGroup(self)
         self.selection_mode = False
         self.selected_images = []
-        self.TAG = ""
+        self.TAG = "all"
         self.display_size = "Medium"
         
 
@@ -384,6 +384,7 @@ class ImageWindow(QMainWindow):
             button.installEventFilter(self)  # Install event filter for the button
             if name.lower() == self.TAG.lower():
                 button.setChecked(True)  # Set the default tag button to be checked
+                
         
         self.button_group.buttonClicked.connect(self.handle_tag_button_click)    
 
