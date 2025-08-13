@@ -15,7 +15,7 @@ from app.utils.file_utils import map_coco_label_to_custom_tag
 
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
-                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen, QGraphicsOpacityEffect)
+                               QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen, QGraphicsOpacityEffect, QStackedLayout, QSizePolicy)
 from PySide6.QtGui import QPixmap, QIcon, QMovie, QGuiApplication
 from PySide6.QtCore import Qt, Signal, QEvent, QSize, QTimer, QPropertyAnimation
 from pprint import pformat
@@ -1084,7 +1084,7 @@ class ImageWindow(QMainWindow):
                     self.tool_tips.setText("Display images in large size (2x2 grid)")
                 elif isinstance(obj, QRadioButton):
                     self.tool_tips.setText(f"Filter images by {obj.text()}")
-                elif hasattr(self, 'image_labels') and any(obj == label for label, _, _ in self.image_labels):
+                elif hasattr(self, 'image_labels') and any(obj == t[0] for t in self.image_labels):
                     self.tool_tips.setText("Click for metadata and quality info, double-click to view larger")
                 elif isinstance(obj, DragDropArea):
                     self.tool_tips.setText("Drag and drop a folder here to import images")
