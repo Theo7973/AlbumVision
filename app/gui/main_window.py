@@ -2,7 +2,7 @@
 import sys
 import os
 import shutil
-import cv2
+import cv2 
 import numpy as np
 from functools import partial
 
@@ -1245,7 +1245,6 @@ class ImageWindow(QMainWindow):
         self.TAG = target_tag
         self.update_image_sizes(self.display_size, target_tag)
 
-# App intro class for Album Vision+
 class IntroSplash(QSplashScreen):
     """
     Frameless splash screen that can show a static PNG/SVG
