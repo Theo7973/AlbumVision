@@ -30,6 +30,5 @@ def main():
         sys.exit(app.exec())  # Start the application event loop
     except ImportError: 
         pass 
-
 if __name__ == "__main__": 
     main() 
