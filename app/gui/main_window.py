@@ -16,8 +16,8 @@ from app.utils.file_utils import map_coco_label_to_custom_tag
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
                                QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen, QGraphicsOpacityEffect)
-from PySide6.QtGui import QPixmap, QIcon, QMovie, QGuiApplication
-from PySide6.QtCore import Qt, Signal, QEvent, QSize, QTimer, QPropertyAnimation
+from PySide6.QtGui import QPixmap, QIcon, QMovie, QGuiApplication, QPainter, QFont
+from PySide6.QtCore import Qt, Signal, QEvent, QSize, QTimer, QPropertyAnimation, QCoreApplication
 from pprint import pformat
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -301,7 +301,8 @@ class ImageWindow(QMainWindow):
         self.selected_images = []
         self.TAG = "all"
         self.display_size = "Medium"
-        
+        self._import_splash = None
+        self._import_total = 0  
 
         # Set the window icon
         icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.svg')
@@ -549,84 +550,93 @@ class ImageWindow(QMainWindow):
 
         print(f"Selected images: {self.selected_images}") 
                 
-    def load_images_from_directory(self, directory):
+    def load_images_from_directory(self, directory, on_progress=None):
         """Load images from a directory and populate the grid with optional checkboxes."""
         self.image_dir = directory
 
         # Clear existing images
         for i in reversed(range(self.grid_layout.count())):
-            widget = self.grid_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.setParent(None)
+            w = self.grid_layout.itemAt(i).widget()
+            if w is not None:
+                w.setParent(None)
 
         self.image_labels.clear()
 
-        # Load all image files from the directory
-        row = 0
-        col = 0
-        image_count = 0
-
+        # Build file list
+        files = []
         if os.path.exists(directory):
-            for file_name in os.listdir(directory):
-                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')):
-                    image_path = os.path.join(directory, file_name)
+            files = [f for f in os.listdir(directory)
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'))]
+        total = len(files)
+
+        row = col = image_count = 0
+
+        for idx, file_name in enumerate(files, start=1):
+            image_path = os.path.join(directory, file_name)
+            try:
+                image_widget = QWidget()
+                layout = QVBoxLayout(image_widget)
+                layout.setAlignment(Qt.AlignCenter)
+
+                image_label = ClickableLabel(self)
+                pixmap = QPixmap(image_path)
+
+                if not pixmap.isNull():
+                    crop_center = self.crop_center(pixmap)
+                    image_label.setPixmap(crop_center)
+                    image_label.setScaledContents(True)
+                    image_label.setFixedSize(260, 260)
+                    layout.addWidget(image_label)
+
+                    image_label.installEventFilter(self)
+                    image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
+                    image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
+
+                    # Get custom tag using the model
                     try:
-                        image_widget = QWidget()
-                        layout = QVBoxLayout(image_widget)
-                        layout.setAlignment(Qt.AlignCenter)
+                        results = model(image_path, verbose=False)
+                        coco_tags = set(model.names[int(box.cls[0])] for box in results[0].boxes)
+                        tag = map_coco_label_to_custom_tag(list(coco_tags)[0]) if coco_tags else "Unknown"
+                    except Exception:
+                        tag = "Unknown"
 
-                        image_label = ClickableLabel(self)
-                        pixmap = QPixmap(image_path)
+                    # Checkbox if selection mode
+                    if self.selection_mode:
+                        checkbox = QCheckBox("Select")
+                        checkbox.setStyleSheet("margin-left: 5px; font-size: 10px;")
+                        checkbox.setProperty("file_path", image_path)
+                        checkbox.stateChanged.connect(self.update_selected_images)
+                        if image_path in self.selected_images:
+                            checkbox.setChecked(True)
+                        layout.addWidget(checkbox)
+                        self.image_labels.append((image_label, pixmap, image_path, checkbox, tag))
+                    else:
+                        layout.addSpacing(20)
+                        self.image_labels.append((image_label, pixmap, image_path, None, tag))
 
-                        if not pixmap.isNull():
-                            crop_center = self.crop_center(pixmap)
-                            image_label.setPixmap(crop_center)
-                            image_label.setScaledContents(True)
-                            image_label.setFixedSize(260, 260)
-                            layout.addWidget(image_label)
+                    self.grid_layout.addWidget(image_widget, row, col)
+                    col += 1
+                    image_count += 1
+                    if col == 3:
+                        col = 0
+                        row += 1
 
-                            image_label.installEventFilter(self)
-                            image_label.clicked.connect(lambda path=image_path: self.on_image_clicked(path))
-                            image_label.doubleClicked.connect(lambda path=image_path: self.on_image_double_clicked(path))
+                # report progress
+                if callable(on_progress):
+                    try:
+                        on_progress(idx, total, file_name)
+                    except Exception:
+                        pass
 
-                            # Get custom tag using the model
-                            try:
-                                results = model(image_path, verbose=False)
-                                coco_tags = set(model.names[int(box.cls[0])] for box in results[0].boxes)
-                                tag = map_coco_label_to_custom_tag(list(coco_tags)[0]) if coco_tags else "Unknown"
-                            except:
-                                tag = "Unknown"
-
-                            # --- Add checkbox if selection mode is active ---
-                            if self.selection_mode:
-                                checkbox = QCheckBox("Select")
-                                checkbox.setStyleSheet("margin-left: 5px; font-size: 10px;")
-                                checkbox.setProperty("file_path", image_path)
-                                checkbox.stateChanged.connect(self.update_selected_images)
-
-                                if image_path in self.selected_images:
-                                    checkbox.setChecked(True)
-
-                                layout.addWidget(checkbox)
-                                self.image_labels.append((image_label, pixmap, image_path, checkbox, tag))
-                            else:
-                                layout.addSpacing(20)
-                                self.image_labels.append((image_label, pixmap, image_path, None, tag))
-
-                            self.grid_layout.addWidget(image_widget, row, col)
-                            col += 1
-                            image_count += 1
-                            if col == 3:
-                                col = 0
-                                row += 1
-                    except Exception as e:
-                        print(f"Error loading image {image_path}: {e}")
+            except Exception as e:
+                print(f"Error loading image {image_path}: {e}")
 
         # Update the tool tips
         if image_count > 0 and self.tool_tips:
             self.tool_tips.setText(f"Loaded {image_count} images from {os.path.basename(directory)}")
         elif self.tool_tips:
             self.tool_tips.setText("No images found in the selected directory")
+
                            
     def delete_selected_images(self):
         if not self.selected_images:
@@ -906,18 +916,10 @@ class ImageWindow(QMainWindow):
         return pixmap.copy(x, y, crop_size, crop_size)
 
     def open_import_dialog(self):
-        """Open a file explorer to select a folder and return the folder path."""
         folder_path = QFileDialog.getExistingDirectory(self, "Select Image Folder")
-        if folder_path:  # If a folder is selected
+        if folder_path:
             print(f"Selected folder: {folder_path}")
-            
-            # Load images from the selected folder
-            self.load_images_from_directory(folder_path)
-            
-            # Update tool tips to show folder loaded
-            if self.tool_tips:
-                self.tool_tips.setText(f"Loaded folder: {os.path.basename(folder_path)}")
-            
+            self.start_import_with_splash(folder_path)  # <— use the splash pipeline
             return folder_path
         else:
             print("No folder selected.")
@@ -1245,30 +1247,98 @@ class ImageWindow(QMainWindow):
         self.TAG = target_tag
         self.update_image_sizes(self.display_size, target_tag)
 
+    def start_import_with_splash(self, folder_path: str):
+        if not folder_path or not os.path.isdir(folder_path):
+            QMessageBox.warning(self, "Invalid path", "Invalid path provided. Make sure it's a directory.")
+            return
+
+        pm = _make_progress_splash(subtitle="Scanning and loading thumbnails…")
+        self._import_splash = QSplashScreen(pm, Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+        self._import_splash.setWindowFlag(Qt.Tool)
+        self._import_splash.showMessage("Preparing…", Qt.AlignLeft | Qt.AlignBottom, Qt.darkGray)
+        self._import_splash.show()
+        QCoreApplication.processEvents()
+
+        try:
+            self.load_images_from_directory(folder_path, on_progress=self._update_import_progress)
+        finally:
+            if self._import_splash:
+                self._import_splash.finish(self)
+                self._import_splash = None
+            if self.tool_tips:
+                self.tool_tips.setText(f"Loaded folder: {os.path.basename(folder_path)}")
+
+    def _update_import_progress(self, idx: int, total: int, filename: str | None):
+        self._import_total = total
+        pct = 0 if total == 0 else int((idx / total) * 100)
+        text = f"{pct}%  ({idx}/{total})"
+        if filename:
+            text += f" - {filename}"
+        if self._import_splash:
+            self._import_splash.showMessage(text, Qt.AlignLeft | Qt.AlignBottom, Qt.darkGray)
+            QCoreApplication.processEvents()
+
+def _make_progress_splash(width=560, height=220, title="Album Vision+", subtitle="Importing images…"):
+    pm = QPixmap(width, height)
+    pm.fill(Qt.white)
+    p = QPainter(pm)
+    try:
+        f1 = QFont(); f1.setPointSize(18); f1.setBold(True)
+        p.setFont(f1); p.setPen(Qt.black)
+        p.drawText(24, 60, title)
+
+        f2 = QFont(); f2.setPointSize(11)
+        p.setFont(f2); p.setPen(Qt.darkGray)
+        p.drawText(24, 96, subtitle)
+
+        p.setPen(Qt.lightGray)
+        p.drawRect(0, 0, width-1, height-1)
+    finally:
+        p.end()
+    return pm
 class IntroSplash(QSplashScreen):
     """
-    Frameless splash screen that can show a static PNG/SVG
-    or play an animated GIF via QMovie.  Call .start() to
-    fade it out automatically.
+    Frameless splash screen with centered animated GIF and text.
     """
     def __init__(self, still_path: str, gif_path: str | None = None):
-        super().__init__(QPixmap(still_path))
+        # Just make an empty transparent pixmap as the "background"
+        pm = QPixmap(560, 320)
+        pm.fill(Qt.transparent)
+        super().__init__(pm)
+
         self.setWindowFlag(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
-        # Optional animated GIF in the center
+        # Use a vertical layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Title
+        self.title_lbl = QLabel("Album Vision+", self)
+        self.title_lbl.setAlignment(Qt.AlignCenter)
+        self.title_lbl.setStyleSheet("QLabel { font-size: 22px; font-weight: bold; color: white; }")
+        layout.addWidget(self.title_lbl)
+
+        # GIF (centerpiece)
+        self.movie_lbl = QLabel(self)
+        self.movie_lbl.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.movie_lbl, alignment=Qt.AlignCenter)
+
         if gif_path and os.path.exists(gif_path):
-            self.movie_lbl = QLabel(self)
-            self.movie_lbl.setAlignment(Qt.AlignCenter)
-            self.movie_lbl.setGeometry(self.rect())
             self.movie = QMovie(gif_path)
             self.movie_lbl.setMovie(self.movie)
             self.movie.start()
 
+        # Subtitle
+        self.subtitle_lbl = QLabel("Starting...", self)
+        self.subtitle_lbl.setAlignment(Qt.AlignCenter)
+        self.subtitle_lbl.setStyleSheet("QLabel { font-size: 12px; color: #CCCCCC; }")
+        layout.addWidget(self.subtitle_lbl)
+
     def start(self, duration_ms: int = 1800):
-        """Show now, then fade out after *duration_ms*."""
         self.show()
-        QGuiApplication.processEvents()          # paint immediately
+        QGuiApplication.processEvents()
         QTimer.singleShot(duration_ms, self._fade_out)
 
     def _fade_out(self):
@@ -1290,7 +1360,6 @@ if __name__ == "__main__":
     gif_path  = os.path.join(os.path.dirname(__file__),
                              "resources", "animations", "intro.gif")
     splash = IntroSplash(logo_path, gif_path if os.path.exists(gif_path) else None)
-    splash.showMessage("Album Vision+", Qt.AlignBottom | Qt.AlignHCenter, Qt.white)
     print("LOGO PATH:", logo_path)
     print("Exists?   ", os.path.exists(logo_path))
     splash.start(duration_ms=2400)   # show ~2.4 s total
