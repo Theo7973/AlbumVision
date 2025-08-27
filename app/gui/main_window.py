@@ -305,7 +305,7 @@ class ImageWindow(QMainWindow):
         self._import_total = 0  
 
         # Set the window icon
-        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.svg')
+        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.ico')
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
@@ -834,34 +834,36 @@ class ImageWindow(QMainWindow):
             # -------------------------------------------------
 
             if isinstance(metadata, dict) and "error" in metadata:
-                self.img_info.setText(f"Error reading metadata:\n{metadata['error']}")
+                self.img_info.setText(f"Error reading metadata:<br>{metadata['error']}")
             else:
                 # Enhanced metadata display with quality information
-                info_text = f"File: {os.path.basename(image_path)}\n\n"
+                info_text = '<p style="font-size: 14pt; font-weight: bold;">Info</p>'
                 
                 # Basic file info
                 try:
                     file_size = os.path.getsize(image_path)
-                    info_text += f"Size: {file_size:,} bytes\n"
-                    info_text += f"Path: {image_path}\n\n"
+                    info_text += f"File size: {file_size:,} bytes<br>"
+                    info_text += f"Path: {image_path}<br><br>"
+
+                    info_text += "=" * 30 + "<br>"  # Separator
                 except:
                     pass
                 
                 # Quality analysis
-                info_text += "Quality Analysis:\n"
-                info_text += f"Quality: {quality.upper()}\n"
-                info_text += f"Score: {score:.2f}\n"
-                info_text += f"Dimensions: {dimensions[0]} x {dimensions[1]}\n\n"
+                info_text += '<p style="font-size: 14pt; font-weight: bold;">Quality Analysis</p>'
+                info_text += f"Quality: {quality.upper()}<br>"
+                # info_text += f"Score: {score:.2f}<br>"
 
                 # Display simplified tags
-                info_text += f"Detected Tags: {', '.join(tags_detected)}\n\n"
-                
+                info_text += f"Detected Tags: {', '.join(tags_detected)}<br><br>"
+                info_text += "=" * 30 + "<br>"  # Separator
+
                 # Additional metadata if available
                 if isinstance(metadata, dict):
-                    info_text += "Additional Metadata:\n"
+                    info_text += '<p style="font-size: 14pt; font-weight: bold;">Additional Metadata</p>'
                     for key, value in metadata.items():
-                        info_text += f"{key}: {value}\n"
-                
+                        info_text += f"{key}: {value}<br>"
+                self.img_info.setTextFormat(Qt.RichText)  # Enable HTML formatting
                 self.img_info.setText(info_text)
         except Exception as e:
             self.img_info.setText(f"Error processing image:\n{str(e)}")
