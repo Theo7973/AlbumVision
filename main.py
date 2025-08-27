@@ -30,14 +30,14 @@ def main():
 
     # Paths to assets next to this file (adjust if yours differ)
     project_root = Path(__file__).resolve().parent
-    logo_path = project_root / "resources" / "images" / "albumvision_logo.png"
+    # logo_path = project_root / "resources" / "images" / "albumvision_logo.png"
     gif_path  = project_root / "resources" / "animations" / "intro.gif"
 
     # Use the IntroSplash you defined in app.gui.main_window
     from app.gui.main_window import IntroSplash, ImageWindow
 
     # Intro splash (shows immediately)
-    splash = IntroSplash(str(logo_path), str(gif_path) if gif_path.exists() else None)
+    # splash = IntroSplash(str(logo_path), str(gif_path) if gif_path.exists() else None)
     splash.start(2000)                 # keep visible for ~2 seconds
     QGuiApplication.processEvents()    # paint right away
 

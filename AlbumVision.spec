@@ -5,7 +5,7 @@ a = Analysis(
     ['app\\gui\\main_window.py'],
     pathex=[],
     binaries=[],
-    datas=[('resources/icons', 'resources/icons'), ('data/test_images', 'data/test_images'), ('yolov8n.pt', '.')],
+    datas=[('resources/icons', 'resources/icons'), ('data/test_images', 'data/test_images'), ('resources/animations', 'resources/animations'), ('yolov8n.pt', '.')],
     hiddenimports=['PySide6', 'cv2', 'numpy', 'matplotlib', 'ultralytics'],
     hookspath=[],
     hooksconfig={},

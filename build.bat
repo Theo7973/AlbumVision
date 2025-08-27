@@ -8,6 +8,7 @@ pyinstaller --name AlbumVision ^
     --icon "resources/icons/ab_logo.ico" ^
     --add-data "resources/icons;resources/icons" ^
     --add-data "data/test_images;data/test_images" ^
+    --add-data "resources/animations;resources/animations" ^
     --add-data "yolov8n.pt;." ^
     --hidden-import PySide6 ^
     --hidden-import cv2 ^
