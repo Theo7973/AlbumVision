@@ -1,0 +1,7 @@
+from app.gui.theme_manager import ThemeManager
+from PySide6.QtWidgets import QApplication
+
+def apply_theme(self, theme: str):
+    app = QApplication.instance()
+    if app:
+        ThemeManager.apply_theme(app, theme)
