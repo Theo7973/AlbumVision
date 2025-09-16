@@ -24,6 +24,8 @@ from app.utils.Auto_Sort_Basic import model
 from app.utils.file_utils import map_coco_label_to_custom_tag
 from app.utils.Auto_Sort_Basic import model
 from app.utils.file_utils import map_coco_label_to_custom_tag
+from app.gui.widgets.card_gallery_widget import CardGalleryWidget
+from app.gui.widgets.swipe_viewer import SwipeImageViewer
 
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
@@ -222,15 +224,41 @@ class DragDropArea(QFrame):
         super().__init__(parent)
         self.setAcceptDrops(True)  # Enable drag-and-drop
         self.setStyleSheet("""
-            QFrame {
-                border: 2px dashed gray;
-                border-radius: 5px;
-                background-color: none;
-                font: bold 12px;
-                color: #555;
-                text-align: center;
-            }
-        """)
+    QDialog {
+        background-color: #2b2b2b;
+        color: #ffffff;
+    }
+    QGroupBox {
+        font-weight: bold;
+        border: 2px solid #555555;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+        background-color: #3d3d3d;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 5px 0 5px;
+        color: #ffffff;
+    }
+    QLabel {
+        color: #ffffff;
+        padding: 5px 0px;  /* INCREASED PADDING */
+        margin: 3px 0px;   /* ADDED MARGIN */
+        line-height: 20px; /* FIXED LINE HEIGHT */
+    }
+    QPushButton {
+        background-color: #404040;
+        border: 1px solid #606060;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: #505050;
+    }
+""")
         self.setFixedWidth(291)  # Set a fixed width for the drag-and-drop area
         self.setFixedHeight(100)  # Set a fixed height for the drag-and-drop area
 
@@ -296,7 +324,149 @@ class ClickableLabel(QLabel):
 
 
 class ImageWindow(QMainWindow):
-    def __init__(self):  # Correct indentation (4 spaces)
+    def apply_modern_styling(self):
+        """Apply refined, professional styling to the application"""
+        app_style = """
+        QMainWindow {
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        
+        QPushButton {
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: normal;
+            color: #e0e0e0;
+            min-height: 18px;
+        }
+        
+        QPushButton:hover {
+            background-color: #383838;
+            border-color: #505050;
+        }
+        
+        QPushButton:pressed {
+            background-color: #252525;
+            border-color: #606060;
+        }
+        
+        QPushButton:checked {
+            background-color: #1e4d5b;
+            border-color: #2b6a7a;
+        }
+        
+        QGroupBox {
+            font-weight: 500;
+            font-size: 11px;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            margin-top: 8px;
+            padding-top: 6px;
+            color: #e0e0e0;
+            background-color: #232323;
+        }
+        
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            left: 8px;
+            padding: 0 6px 0 6px;
+            color: #b0b0b0;
+            background-color: #1a1a1a;
+        }
+        
+        QRadioButton {
+            color: #e0e0e0;
+            font-size: 10px;
+            spacing: 6px;
+            padding: 3px;
+        }
+        
+        QRadioButton::indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            border: 1px solid #606060;
+            background-color: #2d2d2d;
+        }
+        
+        QRadioButton::indicator:hover {
+            border-color: #707070;
+        }
+        
+        QRadioButton::indicator:checked {
+            background-color: #4a7c59;
+            border-color: #5a8c69;
+        }
+        
+        QCheckBox {
+            color: #e0e0e0;
+            font-size: 9px;
+            spacing: 4px;
+        }
+        
+        QCheckBox::indicator {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #606060;
+            border-radius: 2px;
+            background-color: #2d2d2d;
+        }
+        
+        QCheckBox::indicator:hover {
+            border-color: #707070;
+        }
+        
+        QCheckBox::indicator:checked {
+            background-color: #4a7c59;
+            border-color: #5a8c69;
+        }
+        
+        QLabel {
+            color: #e0e0e0;
+            font-size: 11px;
+        }
+        
+        QScrollArea {
+            border: 1px solid #404040;
+            border-radius: 3px;
+            background-color: #232323;
+        }
+        
+        QScrollBar:vertical {
+            background-color: #2d2d2d;
+            width: 10px;
+            border-radius: 5px;
+        }
+        
+        QScrollBar::handle:vertical {
+            background-color: #505050;
+            border-radius: 5px;
+            min-height: 15px;
+        }
+        
+        QScrollBar::handle:vertical:hover {
+            background-color: #606060;
+        }
+        
+        QFrame#dragDropFrame {
+            border: 2px dashed #505050;
+            border-radius: 6px;
+            background-color: #232323;
+        }
+        
+        QFrame#dragDropFrame:hover {
+            border-color: #707070;
+            background-color: #282828;
+        }
+        """
+        self.setStyleSheet(app_style)
+
+    def __init__(self):  
         super().__init__()
         self.setWindowTitle("Album Vision+ - Smart Image Organization")
         self.setFixedSize(1200, 800)  # Set the window to a fixed size
@@ -314,7 +484,9 @@ class ImageWindow(QMainWindow):
         self.display_size = "Medium"
         self._import_splash = None
         self._import_total = 0  
-
+        self.card_gallery = None
+        self.current_view = "grid"  # "grid" or "card"
+        self.current_images_data = []  
         # Set the window icon
         icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons', 'ab_logo.ico')
         if os.path.exists(icon_path):
@@ -342,7 +514,9 @@ class ImageWindow(QMainWindow):
         self.outputPath_bnt = QPushButton("Output Path", self)
         self.select_mode_btn = QPushButton("Select Images", self)
         self.settings_btn = QPushButton("Settings", self)
-        self.statistics_btn = QPushButton("Statistics", self)  # Add statistics button
+        self.statistics_btn = QPushButton("Statistics", self)
+
+        self.select_mode_btn.setCheckable(True)  # Make it a toggle button
 
         # install event filter on the buttons
         self.import_bnt.installEventFilter(self)
@@ -352,23 +526,22 @@ class ImageWindow(QMainWindow):
         self.settings_btn.installEventFilter(self)
         self.statistics_btn.installEventFilter(self)  # Add event filter
 
-        # Add buttons to the layout
         func_button_layout.addWidget(self.import_bnt)
         func_button_layout.addWidget(self.export_bnt)
         func_button_layout.addWidget(self.checkDup_bnt)
         func_button_layout.addWidget(self.outputPath_bnt)
         func_button_layout.addWidget(self.select_mode_btn)
         func_button_layout.addWidget(self.settings_btn)
-        func_button_layout.addWidget(self.statistics_btn)  # Add to layout
-
-        # Create delete button (initially hidden)
+        func_button_layout.addWidget(self.statistics_btn) 
+        self.view_toggle_btn = QPushButton("Card View", self)
+        self.view_toggle_btn.installEventFilter(self)
+        func_button_layout.addWidget(self.view_toggle_btn)
         self.delete_selected_btn = QPushButton("Delete Selected", self)
         self.delete_selected_btn.setVisible(False)  # Only visible in selection mode
 
-        # Add the button layout to the left layout
+# Add the button layout to the left layout
         left_layout.addLayout(func_button_layout)
         left_layout.addWidget(self.delete_selected_btn)
-
         # Create a QGroupBox for the tag buttons
         tag_btn_group_box = QGroupBox("Tag Name")
         tag_btn_group_box.setStyleSheet("""
@@ -509,16 +682,13 @@ class ImageWindow(QMainWindow):
         self.tool_tips.setText("Tool Tips")
         self.tool_tips.setWordWrap(True)
         outer_layout.addWidget(self.tool_tips)
-# Apply modern styling (add this at the end of __init__)
-        self.apply_modern_styling()
-        self.enhance_drag_drop_area()
+        
 
 # Set the main widget as the central widget
         self.setCentralWidget(main_widget)
         # Main widget setup
       
 
-        # Connect all buttons AFTER everything is created
         self.import_bnt.clicked.connect(self.open_import_dialog)
         self.export_bnt.clicked.connect(self.open_export_dialog)
         self.checkDup_bnt.clicked.connect(self.show_duplicates_dialog)
@@ -526,12 +696,128 @@ class ImageWindow(QMainWindow):
         self.settings_btn.clicked.connect(self.open_settings_dialog)
         self.select_mode_btn.clicked.connect(self.toggle_selection_mode)
         self.delete_selected_btn.clicked.connect(self.delete_selected_images)
-        
+        self.statistics_btn.clicked.connect(self.open_statistics_dialog)  # ADD THIS LINE
+        self.view_toggle_btn.clicked.connect(self.toggle_view_mode)
         # Connect tag button group and size buttons
         self.button_group.buttonClicked.connect(self.handle_tag_button_click)
         self.small_size_btn.toggled.connect(lambda: self.update_image_sizes("Small", self.TAG))
         self.medium_size_btn.toggled.connect(lambda: self.update_image_sizes("Medium", self.TAG))
         self.large_size_btn.toggled.connect(lambda: self.update_image_sizes("Large", self.TAG))
+    def toggle_view_mode(self):
+        """Toggle between grid and card view modes."""
+        if self.current_view == "grid":
+            self.switch_to_card_view()
+        else:
+            self.switch_to_grid_view()
+
+    def switch_to_card_view(self):
+        """Switch to card-based layout."""
+        # Hide the current grid scroll area
+        self.scroll_area.hide()
+        
+        # Create card gallery if it doesn't exist
+        if not self.card_gallery:
+            self.card_gallery = CardGalleryWidget(self)
+            self.card_gallery.image_clicked.connect(self.open_swipe_viewer)
+            
+            # Insert card gallery into the left layout (replace scroll area position)
+            layout_index = self.left_layout.indexOf(self.scroll_area)
+            self.left_layout.insertWidget(layout_index + 1, self.card_gallery)
+        
+        # Prepare image data for card view
+        self.prepare_image_data_for_cards()
+        
+        # Load images into card view
+        if self.current_images_data:
+            self.card_gallery.load_images(self.current_images_data)
+        
+        # Show card gallery
+        self.card_gallery.show()
+        
+        # Update state and button
+        self.current_view = "card"
+        self.view_toggle_btn.setText("Grid View")
+        
+        if self.tool_tips:
+            self.tool_tips.setText("Card view mode - Click any image to open swipe viewer")
+
+    def switch_to_grid_view(self):
+        """Switch back to grid-based layout."""
+        # Hide card gallery
+        if self.card_gallery:
+            self.card_gallery.hide()
+        
+        # Show original grid scroll area
+        self.scroll_area.show()
+        
+        # Update state and button
+        self.current_view = "grid"
+        self.view_toggle_btn.setText("Card View")
+        
+        if self.tool_tips:
+            self.tool_tips.setText("Grid view mode")
+
+    def prepare_image_data_for_cards(self):
+        """Prepare image data structure for card and swipe viewers."""
+        self.current_images_data = []
+        
+        # Get currently filtered images based on selected tag
+        current_tag = self.TAG.lower()
+        
+        for image_data in self.image_labels:
+            if len(image_data) < 5:
+                continue
+                
+            image_label, pixmap, image_path, checkbox, tag = image_data
+            
+            # Apply current tag filter
+            if current_tag == "all" or tag.lower() == current_tag:
+                # Get YOLO classification with confidence
+                category = tag if tag != "Unknown" else "Unknown"
+                confidence = 0.0
+                
+                # Try to get confidence from YOLO if available
+                try:
+                    if hasattr(self, 'get_yolo_confidence'):
+                        confidence = self.get_yolo_confidence(image_path, category)
+                    else:
+                        # Fallback: estimate confidence based on category certainty
+                        confidence = 0.85 if category != "Unknown" else 0.0
+                except:
+                    confidence = 0.0
+                
+                self.current_images_data.append({
+                    'path': image_path,
+                    'category': category,
+                    'confidence': confidence
+                })
+
+    def open_swipe_viewer(self, image_path):
+        """Open the swipe viewer when an image is clicked."""
+        try:
+            # Get all image paths from current data
+            image_paths = [img['path'] for img in self.current_images_data]
+            
+            # Find index of clicked image
+            try:
+                initial_index = image_paths.index(image_path)
+            except ValueError:
+                initial_index = 0
+            
+            # Create categories dict for swipe viewer
+            categories = {}
+            for img_data in self.current_images_data:
+                categories[img_data['path']] = {
+                    'category': img_data.get('category', 'Unknown'),
+                    'confidence': img_data.get('confidence', 0.0)
+                }
+            
+            # Open swipe viewer
+            viewer = SwipeImageViewer(self, image_paths, initial_index, categories)
+            viewer.exec()
+            
+        except Exception as e:
+            print(f"Error opening swipe viewer: {e}")
 
     def get_selected_tag(self):
         """Get the currently selected tag from radio buttons."""
@@ -547,18 +833,27 @@ class ImageWindow(QMainWindow):
         
     def toggle_selection_mode(self):
         """Enable or disable selection mode for deleting images."""
-        self.selection_mode = self.select_mode_btn.isChecked()
+        # Toggle the selection mode
+        self.selection_mode = not self.selection_mode
         self.selected_images = []
-        self.delete_selected_btn.setVisible(self.selection_mode)
 
+        # Update button appearance and text
         if self.selection_mode:
-            self.select_mode_btn.setText("Exit Selection Mode")
-            self.tool_tips.setText("Click the checkboxes below images to select them for deletion.")
+            self.select_mode_btn.setText("Exit Selection")
+            self.select_mode_btn.setChecked(True)
+            self.delete_selected_btn.setVisible(True)
+            if self.tool_tips:
+                self.tool_tips.setText("Click checkboxes to select images for deletion.")
         else:
             self.select_mode_btn.setText("Select Images")
-            self.tool_tips.setText("Tool Tips")
+            self.select_mode_btn.setChecked(False)
+            self.delete_selected_btn.setVisible(False)
+            if self.tool_tips:
+                self.tool_tips.setText("Tool Tips")
 
-        self.load_images_from_directory(self.image_dir)
+        # Reload the images to show/hide checkboxes
+        if self.image_dir:
+            self.load_images_from_directory(self.image_dir)
         
     def update_selected_images(self, state=None):
         self.selected_images.clear()
@@ -658,6 +953,10 @@ class ImageWindow(QMainWindow):
             self.tool_tips.setText(f"Loaded {image_count} images from {os.path.basename(directory)}")
         elif self.tool_tips:
             self.tool_tips.setText("No images found in the selected directory")
+        if self.current_view == "card" and self.card_gallery:
+            self.prepare_image_data_for_cards()
+        if self.current_images_data:
+            self.card_gallery.load_images(self.current_images_data)
 
                            
     def delete_selected_images(self):
@@ -891,7 +1190,52 @@ class ImageWindow(QMainWindow):
             self.img_info.setText(f"Error processing image:\n{str(e)}")
 
     def on_image_double_clicked(self, image_path):
-        """Handle the image double-click event."""
+        """Handle the image double-click event - opens swipe viewer."""
+        try:
+            # Prepare all images from current view for swiping
+            all_images = []
+            categories = {}
+            
+            # Get images based on current tag filter
+            current_tag = self.TAG.lower()
+            
+            for image_data in self.image_labels:
+                if len(image_data) < 5:
+                    continue
+                    
+                image_label, pixmap, img_path, checkbox, tag = image_data
+                
+                # Apply current tag filter
+                if current_tag == "all" or tag.lower() == current_tag:
+                    all_images.append(img_path)
+                    
+                    # Add category info for swipe viewer
+                    categories[img_path] = {
+                        'category': tag if tag != "Unknown" else "Unknown",
+                        'confidence': 0.85 if tag != "Unknown" else 0.0
+                    }
+            
+            if not all_images:
+                QMessageBox.information(self, "No Images", "No images available to view.")
+                return
+            
+            # Find index of clicked image
+            try:
+                initial_index = all_images.index(image_path)
+            except ValueError:
+                initial_index = 0
+            
+            # Open the swipe viewer
+            viewer = SwipeImageViewer(self, all_images, initial_index, categories)
+            viewer.exec()
+            
+        except Exception as e:
+            print(f"Error opening swipe viewer: {e}")
+            # Fallback to simple dialog
+            self.show_simple_image_dialog(image_path)
+
+    def show_simple_image_dialog(self, image_path):
+        """Fallback simple image dialog if swipe viewer fails."""
         try:
             dialog = QDialog(self)
             dialog.setWindowTitle("Image Viewer")
@@ -926,7 +1270,6 @@ class ImageWindow(QMainWindow):
             dialog.exec()
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Could not open image: {str(e)}")
-
     def crop_center(self, pixmap):
         """Crop the center of a QPixmap to create a square crop based on the smaller dimension."""
         if pixmap.isNull():
@@ -1200,8 +1543,13 @@ class ImageWindow(QMainWindow):
                     self.tool_tips.setText("Click for metadata and quality info, double-click to view larger")
                 elif isinstance(obj, DragDropArea):
                     self.tool_tips.setText("Drag and drop a folder here to import images")
-            elif event.type() == QEvent.Leave:
-                self.tool_tips.setText("Tool Tips")
+                elif event.type() == QEvent.Leave:
+                    self.tool_tips.setText("Tool Tips")
+                elif hasattr(self, 'view_toggle_btn') and obj == self.view_toggle_btn:
+                    if self.current_view == "grid":
+                        self.tool_tips.setText("Switch to card layout with category labels")
+                    else:
+                         self.tool_tips.setText("Switch back to grid layout")
         except Exception as e:
             print(f"Event filter error: {e}")
         return super().eventFilter(obj, event)
@@ -1320,145 +1668,169 @@ class ImageWindow(QMainWindow):
         return mapping.get(label.lower(), "unknown")
 
     def filter_images_by_tag(self, target_tag):
-      """Filter and display images by tag"""
-      self.TAG = target_tag
-      self.update_image_sizes(self.display_size, target_tag)
-         # --- Toolbar for extra actions ---
-      self.toolbar = QHBoxLayout()
-        # Add Statistics button to the toolbar
-      self.stats_btn = QPushButton("Statistics", self)
-      self.stats_btn.clicked.connect(self.open_statistics_dialog)
-      self.toolbar.addWidget(self.stats_btn)
-      self.left_layout.insertLayout(0, self.toolbar)
+        """Filter and display images by tag"""
+        self.TAG = target_tag
+        self.update_image_sizes(self.display_size, target_tag)
+        if self.current_view == "card" and self.card_gallery:
+            self.prepare_image_data_for_cards()
+        if self.current_images_data:
+            self.card_gallery.load_images(self.current_images_data)
+
+       
+        #Statistics button to the toolbar
+        self.stats_btn = QPushButton("Statistics", self)
+        self.stats_btn.clicked.connect(self.open_statistics_dialog)
+        self.toolbar.addWidget(self.stats_btn)
+        self.left_layout.insertLayout(0, self.toolbar)
      
 
     def open_statistics_dialog(self):
         """Open the statistics dialog"""
         try:
-            from app.gui.dialogs.statistics_dialog import StatisticsDialog
             dialog = StatisticsDialog(self)
             dialog.exec()
         except Exception as e:
             print(f"Statistics dialog error: {e}")
-            QMessageBox.information(self, "Statistics", f"Statistics feature: {e}")
+            QMessageBox.information(self, "Statistics", f"Statistics feature: {str(e)}")
 
     def apply_modern_styling(self):
-        """Apply modern, professional styling to the application"""
+        """Apply refined, professional styling to the application"""
         app_style = """
         QMainWindow {
-            background-color: #1e1e1e;
-            color: #ffffff;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
+        
         QPushButton {
-            background-color: #404040;
-            border: 1px solid #555555;
-            border-radius: 6px;
-            padding: 8px 16px;
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            padding: 6px 12px;
             font-size: 11px;
-            font-weight: 500;
-            color: #ffffff;
-            min-height: 20px;
+            font-weight: normal;
+            color: #e0e0e0;
+            min-height: 18px;
         }
+        
         QPushButton:hover {
-            background-color: #505050;
-            border-color: #666666;
+            background-color: #383838;
+            border-color: #505050;
         }
+        
         QPushButton:pressed {
-            background-color: #353535;
-            border-color: #777777;
+            background-color: #252525;
+            border-color: #606060;
         }
+        
         QPushButton:checked {
-            background-color: #2980b9;
-            border-color: #3498db;
+            background-color: #1e4d5b;
+            border-color: #2b6a7a;
         }
+        
         QGroupBox {
-            font-weight: 600;
-            font-size: 12px;
-            border: 2px solid #555555;
-            border-radius: 8px;
-            margin-top: 12px;
-            padding-top: 8px;
-            color: #ffffff;
-            background-color: #2a2a2a;
+            font-weight: 500;
+            font-size: 11px;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            margin-top: 8px;
+            padding-top: 6px;
+            color: #e0e0e0;
+            background-color: #232323;
         }
+        
         QGroupBox::title {
             subcontrol-origin: margin;
             subcontrol-position: top left;
-            left: 10px;
-            padding: 0 8px 0 8px;
-            color: #3498db;
-            background-color: #1e1e1e;
+            left: 8px;
+            padding: 0 6px 0 6px;
+            color: #b0b0b0;
+            background-color: #1a1a1a;
         }
+        
         QRadioButton {
-            color: #ffffff;
-            font-size: 11px;
-            spacing: 8px;
-            padding: 4px;
-        }
-        QRadioButton::indicator {
-            width: 16px;
-            height: 16px;
-            border-radius: 8px;
-            border: 2px solid #555555;
-            background-color: #2a2a2a;
-        }
-        QRadioButton::indicator:hover {
-            border-color: #3498db;
-        }
-        QRadioButton::indicator:checked {
-            background-color: #3498db;
-            border-color: #2980b9;
-        }
-        QCheckBox {
-            color: #ffffff;
+            color: #e0e0e0;
             font-size: 10px;
             spacing: 6px;
+            padding: 3px;
         }
+        
+        QRadioButton::indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            border: 1px solid #606060;
+            background-color: #2d2d2d;
+        }
+        
+        QRadioButton::indicator:hover {
+            border-color: #707070;
+        }
+        
+        QRadioButton::indicator:checked {
+            background-color: #4a7c59;
+            border-color: #5a8c69;
+        }
+        
+        QCheckBox {
+            color: #e0e0e0;
+            font-size: 9px;
+            spacing: 4px;
+        }
+        
         QCheckBox::indicator {
-            width: 14px;
-            height: 14px;
-            border: 2px solid #555555;
-            border-radius: 3px;
-            background-color: #2a2a2a;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #606060;
+            border-radius: 2px;
+            background-color: #2d2d2d;
         }
+        
         QCheckBox::indicator:hover {
-            border-color: #3498db;
+            border-color: #707070;
         }
+        
         QCheckBox::indicator:checked {
-            background-color: #3498db;
-            border-color: #2980b9;
+            background-color: #4a7c59;
+            border-color: #5a8c69;
         }
+        
         QLabel {
-            color: #ffffff;
+            color: #e0e0e0;
             font-size: 11px;
         }
+        
         QScrollArea {
-            border: 1px solid #555555;
-            border-radius: 4px;
-            background-color: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 3px;
+            background-color: #232323;
         }
+        
         QScrollBar:vertical {
-            background-color: #3a3a3a;
-            width: 12px;
-            border-radius: 6px;
-        }
-        QScrollBar::handle:vertical {
-            background-color: #555555;
-            border-radius: 6px;
-            min-height: 20px;
-        }
-        QScrollBar::handle:vertical:hover {
-            background-color: #666666;
-        }
-        QFrame#dragDropFrame {
-            border: 2px dashed #555555;
-            border-radius: 8px;
-            background-color: #2a2a2a;
-        }
-        QFrame#dragDropFrame:hover {
-            border-color: #3498db;
             background-color: #2d2d2d;
+            width: 10px;
+            border-radius: 5px;
+        }
+        
+        QScrollBar::handle:vertical {
+            background-color: #505050;
+            border-radius: 5px;
+            min-height: 15px;
+        }
+        
+        QScrollBar::handle:vertical:hover {
+            background-color: #606060;
+        }
+        
+        QFrame#dragDropFrame {
+            border: 2px dashed #505050;
+            border-radius: 6px;
+            background-color: #232323;
+        }
+        
+        QFrame#dragDropFrame:hover {
+            border-color: #707070;
+            background-color: #282828;
         }
         """
         self.setStyleSheet(app_style)
@@ -1615,147 +1987,147 @@ if __name__ == "__main__":
     # Main application style
     app_style = """
     QMainWindow {
-        background-color: #1e1e1e;
-        color: #ffffff;
+        background-color: #1a1a1a;
+        color: #e0e0e0;
         font-family: 'Segoe UI', Arial, sans-serif;
     }
 
     /* Button styling */
     QPushButton {
-        background-color: #404040;
-        border: 1px solid #555555;
-        border-radius: 6px;
-        padding: 8px 16px;
+        background-color: #2d2d2d;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 6px 12px;
         font-size: 11px;
-        font-weight: 500;
-        color: #ffffff;
-        min-height: 20px;
+        font-weight: normal;
+        color: #e0e0e0;
+        min-height: 18px;
     }
 
     QPushButton:hover {
-        background-color: #505050;
-        border-color: #666666;
+        background-color: #383838;
+        border-color: #505050;
     }
 
     QPushButton:pressed {
-        background-color: #353535;
-        border-color: #777777;
+        background-color: #252525;
+        border-color: #606060;
     }
 
     QPushButton:checked {
-        background-color: #2980b9;
-        border-color: #3498db;
+        background-color: #1e4d5b;
+        border-color: #2b6a7a;
     }
 
     /* GroupBox styling */
     QGroupBox {
-        font-weight: 600;
-        font-size: 12px;
-        border: 2px solid #555555;
-        border-radius: 8px;
-        margin-top: 12px;
-        padding-top: 8px;
-        color: #ffffff;
-        background-color: #2a2a2a;
+        font-weight: 500;
+        font-size: 11px;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        margin-top: 8px;
+        padding-top: 6px;
+        color: #e0e0e0;
+        background-color: #232323;
     }
-
+    
     QGroupBox::title {
         subcontrol-origin: margin;
         subcontrol-position: top left;
-        left: 10px;
-        padding: 0 8px 0 8px;
-        color: #3498db;
-        background-color: #1e1e1e;
+        left: 8px;
+        padding: 0 6px 0 6px;
+        color: #b0b0b0;
+        background-color: #1a1a1a;
     }
 
     /* Radio button styling */
     QRadioButton {
-        color: #ffffff;
-        font-size: 11px;
-        spacing: 8px;
-        padding: 4px;
+        color: #e0e0e0;
+        font-size: 10px;
+        spacing: 6px;
+        padding: 3px;
     }
 
     QRadioButton::indicator {
-        width: 16px;
-        height: 16px;
-        border-radius: 8px;
-        border: 2px solid #555555;
-        background-color: #2a2a2a;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        border: 1px solid #606060;
+        background-color: #2d2d2d;
     }
 
     QRadioButton::indicator:hover {
-        border-color: #3498db;
+        border-color: #707070;
     }
 
     QRadioButton::indicator:checked {
-        background-color: #3498db;
-        border-color: #2980b9;
+        background-color: #4a7c59;
+        border-color: #5a8c69;
     }
 
     /* Checkbox styling */
     QCheckBox {
-        color: #ffffff;
-        font-size: 10px;
-        spacing: 6px;
+        color: #e0e0e0;
+        font-size: 9px;
+        spacing: 4px;
     }
 
     QCheckBox::indicator {
-        width: 14px;
-        height: 14px;
-        border: 2px solid #555555;
-        border-radius: 3px;
-        background-color: #2a2a2a;
+        width: 12px;
+        height: 12px;
+        border: 1px solid #606060;
+        border-radius: 2px;
+        background-color: #2d2d2d;
     }
 
     QCheckBox::indicator:hover {
-        border-color: #3498db;
+        border-color: #707070;
     }
 
     QCheckBox::indicator:checked {
-        background-color: #3498db;
-        border-color: #2980b9;
+        background-color: #4a7c59;
+        border-color: #5a8c69;
     }
 
     /* Label styling */
     QLabel {
-        color: #ffffff;
+        color: #e0e0e0;
         font-size: 11px;
     }
 
     /* Scroll area styling */
     QScrollArea {
-        border: 1px solid #555555;
-        border-radius: 4px;
-        background-color: #2a2a2a;
+        border: 1px solid #404040;
+        border-radius: 3px;
+        background-color: #232323;
     }
 
     QScrollBar:vertical {
-        background-color: #3a3a3a;
-        width: 12px;
-        border-radius: 6px;
+        background-color: #2d2d2d;
+        width: 10px;
+        border-radius: 5px;
     }
 
     QScrollBar::handle:vertical {
-        background-color: #555555;
-        border-radius: 6px;
-        min-height: 20px;
+        background-color: #505050;
+        border-radius: 5px;
+        min-height: 15px;
     }
 
     QScrollBar::handle:vertical:hover {
-        background-color: #666666;
+        background-color: #606060;
     }
 
     /* Frame styling for drag-drop area */
     QFrame#dragDropFrame {
-        border: 2px dashed #555555;
-        border-radius: 8px;
-        background-color: #2a2a2a;
+        border: 2px dashed #505050;
+        border-radius: 6px;
+        background-color: #232323;
     }
 
     QFrame#dragDropFrame:hover {
-        border-color: #3498db;
-        background-color: #2d2d2d;
+        border-color: #707070;
+        background-color: #282828;
     }
     """
     app.setStyleSheet(app_style)

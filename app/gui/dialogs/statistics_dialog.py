@@ -131,14 +131,17 @@ class StatisticsDialog(QDialog):
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
+                background-color: #3d3d3d;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
+                color: #ffffff;
             }
             QLabel {
                 color: #ffffff;
+                padding: 3px 0px;  /* KEY FIX: Add vertical padding */
             }
             QPushButton {
                 background-color: #404040;
@@ -173,6 +176,7 @@ class StatisticsDialog(QDialog):
         scroll_area = QScrollArea()
         scroll_widget = QWidget()
         self.content_layout = QVBoxLayout(scroll_widget)
+        self.content_layout.setSpacing(12)  # KEY FIX: Add spacing between sections
         
         # Loading message
         self.loading_label = QLabel("Calculating statistics...")
@@ -218,36 +222,45 @@ class StatisticsDialog(QDialog):
         self.content_layout.addWidget(error_label)
         
     def display_statistics(self, stats):
-        """Display comprehensive statistics"""
+        """Display comprehensive statistics with proper spacing"""
         
         # Overview section
         overview_group = QGroupBox("Library Overview")
         overview_layout = QVBoxLayout(overview_group)
+        overview_layout.setSpacing(8)  # KEY FIX: Proper spacing
+        overview_layout.setContentsMargins(15, 20, 15, 15)  # KEY FIX: Proper margins
         
-        overview_layout.addWidget(QLabel(f"Total Photos: {stats['total_photos']:,}"))
-        overview_layout.addWidget(QLabel(f"Storage Used: {stats['storage_display']}"))
+        overview_layout.addWidget(self.create_stat_label(f"Total Photos: {stats['total_photos']:,}"))
+        overview_layout.addWidget(self.create_stat_label(f"Storage Used: {stats['storage_display']}"))
         
         if stats['file_sizes']:
             avg_size = sum(stats['file_sizes']) / len(stats['file_sizes'])
             avg_size_mb = avg_size / (1024**2)
-            overview_layout.addWidget(QLabel(f"Average File Size: {avg_size_mb:.1f} MB"))
+            overview_layout.addWidget(self.create_stat_label(f"Average File Size: {avg_size_mb:.1f} MB"))
         
         self.content_layout.addWidget(overview_group)
         
-        # Categories section
+        # Categories section with fixed spacing
         if stats['categories']:
             categories_group = QGroupBox("Photo Categories")
             categories_layout = QVBoxLayout(categories_group)
+            categories_layout.setSpacing(6)  # KEY FIX: Consistent spacing
+            categories_layout.setContentsMargins(15, 20, 15, 15)  # KEY FIX: Proper margins
             
             # Text summary
             total_categorized = sum(stats['categories'].values())
-            categories_layout.addWidget(QLabel(f"Categorized Photos: {total_categorized:,}"))
+            categories_layout.addWidget(self.create_stat_label(f"Categorized Photos: {total_categorized:,}"))
             
-            # Top categories
+            # Add spacing after summary
+            categories_layout.addSpacing(5)
+            
+            # Top categories with individual labels for proper spacing
             sorted_categories = sorted(stats['categories'].items(), key=lambda x: x[1], reverse=True)
-            for category, count in sorted_categories[:5]:  # Top 5
+            for category, count in sorted_categories[:10]:  # Show more categories
                 percentage = (count / total_categorized * 100) if total_categorized > 0 else 0
-                categories_layout.addWidget(QLabel(f"  {category}: {count} ({percentage:.1f}%)"))
+                category_label = self.create_stat_label(f"  {category}: {count} ({percentage:.1f}%)")
+                category_label.setContentsMargins(10, 0, 0, 0)  # Indent subcategories
+                categories_layout.addWidget(category_label)
             
             # Chart if matplotlib available
             if MATPLOTLIB_AVAILABLE and stats['categories']:
@@ -263,9 +276,11 @@ class StatisticsDialog(QDialog):
         if stats['recent_uploads']:
             uploads_group = QGroupBox("Upload Activity")
             uploads_layout = QVBoxLayout(uploads_group)
+            uploads_layout.setSpacing(6)  # KEY FIX: Consistent spacing
+            uploads_layout.setContentsMargins(15, 20, 15, 15)
             
             for period, count in stats['recent_uploads'].items():
-                uploads_layout.addWidget(QLabel(f"{period}: {count} photos"))
+                uploads_layout.addWidget(self.create_stat_label(f"{period}: {count} photos"))
             
             # Chart if matplotlib available
             if MATPLOTLIB_AVAILABLE:
@@ -281,14 +296,30 @@ class StatisticsDialog(QDialog):
         if stats['quality_distribution']:
             quality_group = QGroupBox("Image Quality Distribution")
             quality_layout = QVBoxLayout(quality_group)
+            quality_layout.setSpacing(6)  # KEY FIX: Consistent spacing
+            quality_layout.setContentsMargins(15, 20, 15, 15)
             
             total_quality = sum(stats['quality_distribution'].values())
             for quality, count in stats['quality_distribution'].items():
                 percentage = (count / total_quality * 100) if total_quality > 0 else 0
-                quality_layout.addWidget(QLabel(f"{quality.title()} Quality: {count} ({percentage:.1f}%)"))
+                quality_layout.addWidget(self.create_stat_label(f"{quality.title()} Quality: {count} ({percentage:.1f}%)"))
             
             self.content_layout.addWidget(quality_group)
     
+    def create_stat_label(self, text):
+        """Create a properly styled statistics label with consistent spacing"""
+        label = QLabel(text)
+        label.setStyleSheet("""
+            QLabel {
+                color: #ffffff;
+                font-size: 12px;
+                padding: 6px 0px;     /* INCREASED padding */
+                margin: 4px 0px;      /* INCREASED margin */
+                line-height: 18px;    /* FIXED line height in pixels */
+                min-height: 20px;     /* MINIMUM height to prevent overlap */
+            }
+        """)
+        return label
     def create_pie_chart(self, data, title):
         """Create a professional pie chart"""
         if not MATPLOTLIB_AVAILABLE:
