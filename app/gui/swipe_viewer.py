@@ -1,9 +1,11 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                QPushButton, QFrame, QWidget, QGraphicsOpacityEffect)
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+
 from PySide6.QtGui import QPixmap, QKeySequence, QShortcut, QWheelEvent
 import os
-
+from app.utils.theme_manager import ThemeManager
+from app.gui.widgets.image_editor import ImageEditor
 class SwipeImageViewer(QDialog):
     """Full-screen image viewer with smooth fade animations for PySide6."""
     
@@ -32,12 +34,7 @@ class SwipeImageViewer(QDialog):
         self.showMaximized()
         
         # Dark styling
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #000000;
-                color: #e0e0e0;
-            }
-        """)
+        self.setStyleSheet(ThemeManager.get_dialog_style())
     
     def setup_ui(self):
         """Setup the viewer UI components."""
@@ -55,6 +52,85 @@ class SwipeImageViewer(QDialog):
         self.create_info_panel(main_layout)
     
     def create_toolbar(self, parent_layout):
+        """Create top toolbar."""
+        toolbar = QFrame()
+        toolbar.setFixedHeight(60)
+        toolbar.setStyleSheet("""
+            QFrame {
+                background-color: #1e1e1e;
+                border-bottom: 1px solid #404040;
+            }
+        """)
+
+        toolbar_layout = QHBoxLayout(toolbar)
+        toolbar_layout.setContentsMargins(15, 10, 15, 10)
+
+        # Title
+        title_label = QLabel("Image Viewer")
+        title_label.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #e0e0e0;
+            }
+        """)
+        toolbar_layout.addWidget(title_label)
+
+        toolbar_layout.addStretch()
+
+        # Counter
+        self.counter_label = QLabel("")
+        self.counter_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #b0b0b0;
+            }
+        """)
+        toolbar_layout.addWidget(self.counter_label)
+
+        # Edit button
+        edit_btn = QPushButton("Edit")
+        edit_btn.setStyleSheet(ThemeManager.get_success_button_style())
+        edit_btn.clicked.connect(self.open_editor)
+        toolbar_layout.addWidget(edit_btn)
+
+        # Close button
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(30, 30)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 15px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+        """)
+        close_btn.clicked.connect(self.close)
+        toolbar_layout.addWidget(close_btn)
+
+        parent_layout.addWidget(toolbar)
+
+    def open_editor(self):
+        """Open image editor for current image"""
+        try:
+            current_path = self.images[self.current_index]
+
+            editor = ImageEditor(self, current_path)
+            editor.image_saved.connect(self.on_image_edited)
+            editor.exec()
+
+        except Exception as e:
+            print(f"Error opening editor: {e}")
+
+    def on_image_edited(self, image_path):
+        """Refresh image after editing"""
+        # Reload the current image to show changes
+        self.load_current_image_direct()
         """Create top toolbar."""
         toolbar = QFrame()
         toolbar.setFixedHeight(60)
@@ -91,26 +167,16 @@ class SwipeImageViewer(QDialog):
         """)
         toolbar_layout.addWidget(self.counter_label)
         
+        # Edit button
+        edit_btn = QPushButton("Edit")
+        edit_btn.setStyleSheet(ThemeManager.get_success_button_style())
+        edit_btn.clicked.connect(self.open_editor)
+        toolbar_layout.addWidget(edit_btn)
+        
         # Close button
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(30, 30)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 15px;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #c82333;
-            }
-        """)
-        close_btn.clicked.connect(self.close)
-        toolbar_layout.addWidget(close_btn)
         
-        parent_layout.addWidget(toolbar)
     
     def create_image_area(self, parent_layout):
         """Create main image display area."""

@@ -22,11 +22,10 @@ if project_root not in sys.path:
 from app.gui.dialogs.statistics_dialog import StatisticsDialog
 from app.utils.Auto_Sort_Basic import model
 from app.utils.file_utils import map_coco_label_to_custom_tag
-from app.utils.Auto_Sort_Basic import model
 from app.utils.file_utils import map_coco_label_to_custom_tag
-from app.gui.widgets.card_gallery_widget import CardGalleryWidget
-from app.gui.widgets.swipe_viewer import SwipeImageViewer
-
+from app.gui.card_gallery_widget import CardGalleryWidget
+from app.gui.swipe_viewer import SwipeImageViewer
+from app.utils.theme_manager import ThemeManager
 from PySide6.QtWidgets import (QApplication, QRadioButton, QButtonGroup, QGroupBox, QFrame, QFileDialog,
                                QMainWindow, QLabel, QScrollArea, QGridLayout, QWidget, QHBoxLayout, 
                                QVBoxLayout, QSlider, QDialog, QPushButton, QCheckBox, QMessageBox, QSplashScreen, QGraphicsOpacityEffect)
@@ -538,6 +537,7 @@ class ImageWindow(QMainWindow):
         func_button_layout.addWidget(self.view_toggle_btn)
         self.delete_selected_btn = QPushButton("Delete Selected", self)
         self.delete_selected_btn.setVisible(False)  # Only visible in selection mode
+        ThemeManager.apply_theme_to_app(QApplication.instance())
 
 # Add the button layout to the left layout
         left_layout.addLayout(func_button_layout)
